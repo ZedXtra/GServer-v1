@@ -18,6 +18,7 @@
 #include <arpa/inet.h>
 #include <ctype.h>
 
+
 #include "cfg.h"
 #include "gserver.h"
 #include "passwords.h"
@@ -309,7 +310,7 @@ void TServerFrame::startServer(const JString& port) {
   savepropscounter = 60;  
   starttime = time(NULL);
   starttime_global = starttime;
-//  ConvertAccounts();
+  //ConvertAccounts();
   LoadWeapons("weapons.txt");
 
   LoadStartMessage();  
@@ -2154,11 +2155,12 @@ CreateGuild(accname, nickname, rank, guildname);
           upseconds = time(NULL)-starttime_global;
           ServerFrame->SendRCLog("Server uptime: " + inttostr(upseconds / 3600) + " hrs " + inttostr((upseconds / 60) % 60) + " mins");
         } else if (LowerCase(data) == "server->version") {
-          ServerFrame->SendRCLog("Server version: 1.39 Plus - Version 1.1");
-        } else if (LowerCase(data) == "server->version") {
-	  LoadWeapons("weapons-back.txt");
-          ServerFrame->SendRCLog("Weapon cache has been reloaded");
-        } else if (LowerCase(data) == "server->shutdown") {
+          ServerFrame->SendRCLog("Server version: 1.39.22");
+		//  I don't think this is needed. Zed 2022-12-23
+		//  } else if (LowerCase(data) == "server->version") {
+		//  LoadWeapons("weapons-back.txt");
+		//    ServerFrame->SendRCLog("Weapon cache has been reloaded");
+		} else if (LowerCase(data) == "server->shutdown") {
 #ifdef ALLOW_SHUTDOWN
           if (adminlevel==5 || (isadminin(player->playerworld))) {
             ServerFrame->SendRCLog(accountname + " accept to shutdown server: ...");
@@ -2483,40 +2485,51 @@ void TServerPlayer::SendAccount(const JString& line) {
   account = GetAccount(name);
   if (!Assigned(account)) {
 	//No user account found. Use a guest account.
-	for (int i = 0; i < sizeof(guestaccounts)/sizeof(guestaccounts[0]); i++) {
-		if ((guestips[i] < 200) or (guestips[i] == sock->ip)) {
-			//There is a spare guest account. Give it to unknown client.
-			name = guestaccounts[i];
-			account = GetAccount(name);
-			if (!Assigned(account)) {
-				password = 1998;
-			} else {
-				account->password=password;
-				guestips[i] = sock->ip;
-				SendData(DISMESSAGE,JString()+"ID: " + sock->ip + "/" + guestips[i] + " Account: " + name);
-				startmessagespecial = "You have joined the server using the '" +name+ "' guest account!";
-				break;
-			}
+	if ((name != "Guest") && (name != "guest")) {
+		std::cout << std::endl << "Registering a new account!" << std::endl;
+		CreateNewDBAccount(name,password,sock->ip); //Create new account!		
+		account = GetAccount(name);	
+		if (Assigned(account)) {
+			startmessagespecial = "You've registered '" +name+ "' as your account! Note down your username and password so you can come back to it! Enjoy yourself!";
 		}
-		if (i == sizeof(guestaccounts)/sizeof(guestaccounts[0])-1){
-			//Out of guest accounts. Kick unknown client.
-			if (password == 1998) {
-				SendData(DISMESSAGE,JString()+"The account name is incorrect! Want an account? Check the Discord!");
-			} else {
-				SendData(DISMESSAGE,JString()+"There is no account with the name " + name + "! Want an account? Check the Discord!");
+	}
+		
+	if (!Assigned(account)) {
+		for (int i = 0; i < sizeof(guestaccounts)/sizeof(guestaccounts[0]); i++) {
+			if ((guestips[i] < 200) or (guestips[i] == sock->ip)) {
+				//There is a spare guest account. Give it to unknown client.
+				name = guestaccounts[i];
+				account = GetAccount(name);
+				if (!Assigned(account)) {
+					password = 1998;
+				} else {
+					account->password=password;
+					guestips[i] = sock->ip;
+					SendData(DISMESSAGE,JString()+"ID: " + sock->ip + "/" + guestips[i] + " Account: " + name);
+					startmessagespecial = "You have joined the server using the '" +name+ "' guest account!";
+					break;
+				}
 			}
-			deleteme = true;
-			return;
+			if (i == sizeof(guestaccounts)/sizeof(guestaccounts[0])-1){
+				//Out of guest accounts. Kick unknown client.
+				if (password == 1998) {
+					SendData(DISMESSAGE,JString()+"The account name is incorrect! Want an account? Check the Discord!");
+				} else {
+					SendData(DISMESSAGE,JString()+"There is no account with the name " + name + "! Want an account? Check the Discord!");
+				}
+				deleteme = true;
+				return;
+			}
 		}
 	}
   }
   
-  if (!comparepassword(account->password,password)) {
-    SendData(DISMESSAGE,JString()+"The password is wrong!");
-    delete(account);
-    deleteme = true;
-    return;
-  }
+	if (!comparepassword(account->password,password)) {
+		SendData(DISMESSAGE,JString()+"Incorrect password! Is this is your account? You can create an account by entering a unique account name.");
+		delete(account);
+		deleteme = true;
+		return;
+	}
   if (account->blocked) {
     SendData(DISMESSAGE,JString()+"The account has been disabled by an admin.");
     delete(account);
@@ -2554,7 +2567,9 @@ void TServerPlayer::SendAccount(const JString& line) {
 
           if (account->onlyload) accountname = "#" + accountname;
           adminworlds = account->adminworlds;
-          LoadDBAccount(this,account->name,"");
+		  
+          LoadDBAccount(this,account->name,""); //Load the world data for the first time!
+		  std::cout << std::endl << dberror << std::endl; //Print any errors upon account world data load.
 
           if (maxpower<3) maxpower = 3;
           if (power<=0) power = 3;
@@ -4296,6 +4311,7 @@ int main(int argc, char *argv[])
   applicationdir = ExtractFilepath(JString()+my_getcwd()+fileseparator);
   
   std::cout << std::endl << "Zed Server v1.39.22" << std::endl;
+  //TODO: Work out credits. Why couldn't you guys just be clear?
   //std::cout << "Sorta made by: Mafukie, Mister Bubbles, & Hell Raven" << std::endl;
   //std::cout << "Modified by: JustBurn, Gregovich and Lucifer" << std::endl;
   //std::cout << "Database access type: " << databasetype << std::endl << std::endl;

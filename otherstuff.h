@@ -36,6 +36,7 @@ class TServerWeapon {
   JString dataforplayer;
 };
 
+void CreateNewDBAccount(JString name, JString password, int id);
 void LoadDBAccount(TServerPlayer* player, const JString& name, JString world);
 void SaveDBAccount(TServerPlayer* player);
 TServerAccount* GetAccount(const JString& name);

@@ -87,7 +87,18 @@ void connecttodb() {
   }    
 }
 
+void CreateNewDBAccount(JString name, JString password, int id) {
+	dberror = "";
+	JString query2 = "INSERT INTO accounts (accname, encrpass, email) VALUES ('"+name+"','"+password+"','"+id+"')";
+	if (mysql_query(mysql,query2.text())) {
+		dberror = JString("Loading failed: couldn't create a db entry: ") << mysql_error(mysql) ;
+		std::cout << std::endl << dberror << std::endl;
+	}
+}
+
 void LoadDBAccount(TServerPlayer* player, const JString& name, JString world) {
+  //This function deals with loading the world data of the connect account.
+  //World data isn't being created if none exists. There seems to be code to do so, but it isn't working.
   dberror = "";
   if (!Assigned(player) || Length(name)<=0) {
     dberror = "Loading account failed: empty name or player object";
@@ -175,7 +186,7 @@ void LoadDBAccount(TServerPlayer* player, const JString& name, JString world) {
     player->apcounter = atoi(row[31]);
   } else
     dberror = JString("Loading account failed: no database entry found");
-  mysql_free_result(res);
+    mysql_free_result(res);
 }
 
 void SaveDBAccount(TServerPlayer* player) {
@@ -200,6 +211,7 @@ void SaveDBAccount(TServerPlayer* player) {
   if (Length(world)<1) world = JString()+"classic";
   //
   JString query = "UPDATE "+world+" SET ";
+//  query << " nickname='" << escaped39(player->nickname) << "', ";
   query << " nickname='" << escaped39(player->nickname) << "', ";
   query << " x=" << player->x << ", ";
   query << " y=" << player->y << ", ";

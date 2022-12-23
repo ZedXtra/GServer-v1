@@ -12,6 +12,9 @@ The minimum software requirements for this server are:
 - GCC 10.2.1 (if compiling from source)
 - Linux 5.1
 
-The server requires a MariaDB. The sample database "database.txt" can be used to get you started.
+The server requires a MariaDB. The sample database "database.txt" can be used to get you started. This sample database does not include guest accounts. You can define guest accounts in gserver.cpp. Any accounts listed in guestaccounts will be given to users with invalid accounts.
 
-This sample database does not include guest accounts. You can define guest accounts in gserver.cpp. Any accounts listed in guestaccounts will be given to users with invalid accounts.
+Add to following to /etc/mysql/my.cnf:
+
+[mysqld]
+sql_mode = ""
