@@ -19,7 +19,7 @@ TServerAccount::TServerAccount() {
 void LoadWeapons(const char* loadfile) {
   unsigned int curtime = time(NULL);
   TJStringList* list = new TJStringList();
-  list->LoadFromFile(ServerFrame->getDir() << "data/" << loadfile);
+  list->LoadFromFile(ServerFrame->getDir() << "config/" << loadfile);
 cout << loadfile << endl;
   int k;
   int z;
@@ -90,7 +90,7 @@ void SaveWeapons() {
     TServerWeapon* weapon = (TServerWeapon*)(*weapons)[i];
     if (Assigned(weapon)) list->Add(weapon->fullstr);
   }
-  list->SaveToFile(ServerFrame->getDir() << "data/weapons.txt");
+  list->SaveToFile(ServerFrame->getDir() << "config/weapons.txt");
   delete(list);
 }
 
@@ -101,28 +101,50 @@ bool LevelIsJail(const JString& str) {
   return false;
 }
 
+void ToWaypointLevel(const JString& accname, JString waypoint_level, double waypoint_x, double waypoint_y) {
+	if (Length(accname)<=0) return;
+
+	TServerPlayer* player2 = ServerFrame->GetPlayerForAccount(accname);
+	if (Assigned(player2) && !player2->isrc && Length(player2->playerworld)>0 && !LevelIsJail(LowerCaseFilename(player2->levelname))) 
+	player2->gotoNewWorld("",startlevel,startx,starty);
+
+	TServerPlayer* player = new TServerPlayer(NULL,0);
+	LoadDBAccount(player,accname,"");
+	if (!LevelIsJail(LowerCaseFilename(player->levelname))) {
+		player->levelname = waypoint_level; 
+		player->x = waypoint_x; 
+		player->y = waypoint_y; 
+		player->status = (player->status | 16); 
+		if (Assigned(player2)) {
+			player2->ApplyAccountChange(player,true);
+		} else if (Pos('#',accname)!=1) {
+			SaveDBAccount(player);
+		}
+	}
+	delete(player);
+} 
+
 void ToStartLevel(const JString& accname) {
-  if (Length(accname)<=0) return;
+	if (Length(accname)<=0) return;
 
-  TServerPlayer* player2 = ServerFrame->GetPlayerForAccount(accname);
-  if (Assigned(player2) && !player2->isrc && Length(player2->playerworld)>0 &&
-      !LevelIsJail(LowerCaseFilename(player2->levelname)))
-    player2->gotoNewWorld("",startlevel,startx,starty);
+	TServerPlayer* player2 = ServerFrame->GetPlayerForAccount(accname);
+	if (Assigned(player2) && !player2->isrc && Length(player2->playerworld)>0 && !LevelIsJail(LowerCaseFilename(player2->levelname))) 
+	player2->gotoNewWorld("",startlevel,startx,starty);
 
-  TServerPlayer* player = new TServerPlayer(NULL,0);
-  LoadDBAccount(player,accname,"");
-  if (!LevelIsJail(LowerCaseFilename(player->levelname))) {
-    player->levelname = startlevel; 
-    player->x = startx; 
-    player->y = starty; 
-    player->status = (player->status | 16); 
-    
-    if (Assigned(player2))
-      player2->ApplyAccountChange(player,true);
-    else if (Pos('#',accname)!=1)
-      SaveDBAccount(player);
-  }
-  delete(player);
+	TServerPlayer* player = new TServerPlayer(NULL,0);
+	LoadDBAccount(player,accname,"");
+	if (!LevelIsJail(LowerCaseFilename(player->levelname))) {
+		player->levelname = startlevel; 
+		player->x = startx; 
+		player->y = starty; 
+		player->status = (player->status | 16); 
+		if (Assigned(player2)) {
+			player2->ApplyAccountChange(player,true);
+		} else if (Pos('#',accname)!=1) {
+			SaveDBAccount(player);
+		}
+	}
+	delete(player);
 } 
 // Modified to use Mysql ftw!
 extern bool IsInGuild(const JString& accname,const JString& name,const JString& guild);

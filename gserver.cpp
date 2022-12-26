@@ -32,7 +32,9 @@
 int cplayer = 0;
 int cplayermodify = 0;
 int caccounts = 0;
-//Guest accounts will be used when a player connects with an incorrect username. The account will be reserved to the player's IP address while the server is running. Restarting the server will clear IP reservation.
+//Guest accounts will be used when a player connects with the account set to 'Guest'. 
+//The particular guest account assigned will be reserved to the player's IP address while the server is running. 
+//Restarting the server will clear IP reservation.
 JString guestaccounts[30] = {"Guest0", "Guest1", "Guest2", "Guest3", "Guest4", "Guest5", "Guest6", "Guest7", "Guest8", "Guest9",
 					  "ExtraGuest0", "ExtraGuest1", "ExtraGuest2", "ExtraGuest3", "ExtraGuest4", "ExtraGuest5", "ExtraGuest6", "ExtraGuest7", "ExtraGuest8", "ExtraGuest9",
 					  "UnexpectedGuest0", "UnexpectedGuest1", "UnexpectedGuest2", "UnexpectedGuest3", "UnexpectedGuest4", "UnexpectedGuest5", "UnexpectedGuest6", "UnexpectedGuest7", "UnexpectedGuest8", "UnexpectedGuest0"};
@@ -41,6 +43,41 @@ int guestips[30] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 1
 void RefindAllSubdirs(JString path);
 void signalhandler(int sig);
 unsigned int starttime_global;
+
+struct CfgStrings CfgSettings[] =
+{
+	{ "maxpower", NULL },
+	{ "unstickme_level", NULL },
+	{ "unstickme_x", NULL },
+	{ "unstickme_y", NULL },
+	{ "waypoint1_level", NULL },
+	{ "waypoint1_x", NULL },
+	{ "waypoint1_y", NULL },
+	{ "waypoint2_level", NULL },
+	{ "waypoint2_x", NULL },
+	{ "waypoint2_y", NULL },
+	{ "waypoint3_level", NULL },
+	{ "waypoint3_x", NULL },
+	{ "waypoint3_y", NULL },
+	{ "waypoint4_level", NULL },
+	{ "waypoint4_x", NULL },
+	{ "waypoint4_y", NULL },
+	{ "waypoint5_level", NULL },
+	{ "waypoint5_x", NULL },
+	{ "waypoint5_y", NULL },
+	{ "waypoint6_level", NULL },
+	{ "waypoint6_x", NULL },
+	{ "waypoint6_y", NULL },
+	{ "waypoint7_level", NULL },
+	{ "waypoint7_x", NULL },
+	{ "waypoint7_y", NULL },
+	{ "waypoint8_level", NULL },
+	{ "waypoint8_x", NULL },
+	{ "waypoint8_y", NULL },
+	{ "waypoint9_level", NULL },
+	{ "waypoint9_x", NULL },
+	{ "waypoint9_y", NULL }
+};
 
 TServerFrame* ServerFrame;
 TList* weapons = new TList();
@@ -55,9 +92,9 @@ int apincrementtime = 1200;
   double startx = 30.5;
   double starty = 50;
 #else
-  JString startlevel = JString("unstickme.graal");
-  double startx = 29.5;
-  double starty = 30;
+	JString startlevel = JString("onlinestartlocation.zelda");
+	double startx = 17.5;
+	double starty = 24;
 #endif
 
 #ifdef OS_WIN32
@@ -284,46 +321,113 @@ unsigned int GetUTCFileModTime(JString filename) {
 //--- TServerFrame ---  
   
 void TServerFrame::startServer(const JString& port) {  
-  levels = new TList();  
-  players = new TList();  
+	levels = new TList();  
+	players = new TList();  
+	  
+	unsigned short portnum = (unsigned short)strtoint(port);  
+	sock = new TSocket();  
+	sock->Bind(portnum,false,false);  
+	if (sock->error==TSOCKET_ERRCREATE) {
+		std::cout << "socket exception: cannot create socket" << std::endl;  
+		exit(0);  
+	}  
+	if (sock->error==TSOCKET_ERRBIND) {  
+		std::cout << "Port address " << portnum << " is currently used by another programm. Try later!" << std::endl;  
+		exit(0);  
+	}  
+	std::cout << "Server started. Port: " << portnum << std::endl;   
+	toerrorlog("Server started.");  
+	  
+	responsesock = new TSocket();  
+	responsesock->Bind(14899,false,true);  
+	if (!sock->sock) std::cout << "Couldn't bind the response socket" << std::endl;  
+	else std::cout << "Response socket established at port 14899" << std::endl;  
+	  
+	curdir = getDir()+"server"+fileseparator;  
+	savepropscounter = 60;  
+	starttime = time(NULL);
+	starttime_global = starttime;
+	//ConvertAccounts();
+	LoadWeapons("weapons.txt");
   
-  unsigned short portnum = (unsigned short)strtoint(port);  
-  sock = new TSocket();  
-  sock->Bind(portnum,false,false);  
-  if (sock->error==TSOCKET_ERRCREATE) {
-    std::cout << "socket exception: cannot create socket" << std::endl;  
-    exit(0);  
-  }  
-  if (sock->error==TSOCKET_ERRBIND) {  
-    std::cout << "Port address " << portnum << " is currently used by another programm. Try later!" << std::endl;  
-    exit(0);  
-  }  
-  std::cout << "Server started. Port: " << portnum << std::endl;   
-  toerrorlog("Server started.");  
   
-  responsesock = new TSocket();  
-  responsesock->Bind(14899,false,true);  
-  if (!sock->sock) std::cout << "Couldn't bind the response socket" << std::endl;  
-  else std::cout << "Response socket established at port 14899" << std::endl;  
+	std::cout << std::endl << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"		<< std::endl;
+	
+	std::cout << std::endl << "Zed Server v1.39.22" << std::endl;
   
-  curdir = getDir()+"levels"+fileseparator;  
-  savepropscounter = 60;  
-  starttime = time(NULL);
-  starttime_global = starttime;
-  //ConvertAccounts();
-  LoadWeapons("weapons.txt");
+	CfgRead("config/settings.txt", CfgSettings);
+	
+	// 0 = maxpower
+	// 1 = unstickme_level
+	// 2 = unstickme_x
+	// 3 = unstickme_y
+	// 4 = waypoint1_level
+	// 5 = waypoint1_x
+	// 6 = waypoint1_y
+	// 7 = waypoint2_level
+	// 8 = waypoint2_x
+	// 9 = waypoint2_y
+	//10 = waypoint3_level
+	//11 = waypoint3_x
+	//12 = waypoint3_y
+	//13 = waypoint4_level
+	//14 = waypoint4_x
+	//15 = waypoint4_y
+	//16 = waypoint5_level
+	//17 = waypoint5_x
+	//18 = waypoint5_y
+	//19 = waypoint6_level
+	//20 = waypoint6_x
+	//21 = waypoint6_y
+	//22 = waypoint7_level
+	//23 = waypoint7_x
+	//24 = waypoint7_y
+	//25 = waypoint8_level
+	//26 = waypoint8_x
+	//27 = waypoint8_y
+	//28 = waypoint9_level
+	//29 = waypoint9_x
+	//30 = waypoint9_y
+	
+	if (CfgSettings[1].data == NULL) {
+		
+		std::cout << std::endl << "Add unstickme_level, unstickme_x, and unstickme_y, to /config/settings.txt to set the start level. Defaulting to " +startlevel+"!"		<< std::endl;
+	} else {
+		startlevel = JString(CfgSettings[1].data);
+		startx = atoi(CfgSettings[2].data);
+		starty = atoi(CfgSettings[3].data);
+		std::cout << std::endl << "Unstick Location: " + startlevel << std::endl;
+		std::cout << std::endl << "Waypoint 1: " + JString(CfgSettings[1+(1*3)].data) << std::endl;
+		std::cout << std::endl << "Waypoint 2: " + JString(CfgSettings[1+(2*3)].data) << std::endl;
+		std::cout << std::endl << "Waypoint 3: " + JString(CfgSettings[1+(3*3)].data) << std::endl;
+		std::cout << std::endl << "Waypoint 4: " + JString(CfgSettings[1+(4*3)].data) << std::endl;
+		std::cout << std::endl << "Waypoint 5: " + JString(CfgSettings[1+(5*3)].data) << std::endl;
+		std::cout << std::endl << "Waypoint 6: " + JString(CfgSettings[1+(6*3)].data) << std::endl;
+		std::cout << std::endl << "Waypoint 7: " + JString(CfgSettings[1+(7*3)].data) << std::endl;
+		std::cout << std::endl << "Waypoint 8: " + JString(CfgSettings[1+(8*3)].data) << std::endl;
+		std::cout << std::endl << "Waypoint 9: " + JString(CfgSettings[1+(9*3)].data) << std::endl;
+	}
 
-  LoadStartMessage();  
-  serverflags = new TJStringList();
-  serverflags->SetPlainMem();
-  serverflags->LoadFromFile(getDir()+"data/serverflags.txt");  
-  for (int i=serverflags->count-1; i>=0; i--)
-    if (!iscorrect((*serverflags)[i])) serverflags->Delete(i);
 
-/*  TJStringList* list = new TJStringList();
-  list->LoadFromFile(getDir()+"data/maxplayers.txt");
-  if (list->count>=1) maxplayersonserver = atoi((*list)[0].text());
-  delete(list);*/
+
+    
+	
+	
+  
+  
+  
+
+	LoadStartMessage();  
+	serverflags = new TJStringList();
+	serverflags->SetPlainMem();
+	serverflags->LoadFromFile(getDir()+"config/serverflags.txt");  
+	for (int i=serverflags->count-1; i>=0; i--)
+	if (!iscorrect((*serverflags)[i])) serverflags->Delete(i);
+
+	/*  TJStringList* list = new TJStringList();
+	list->LoadFromFile(getDir()+"config/maxplayers.txt");
+	if (list->count>=1) maxplayersonserver = atoi((*list)[0].text());
+	delete(list);*/
 }  
   
 void TServerFrame::LoadStartMessage() {  
@@ -426,7 +530,7 @@ void TServerFrame::CreatePlayer(TSocket* clientsock) {
   TServerPlayer* player;
   bool isipbanned;  
   
-  isipbanned = IsIPInList(clientsock,"",getDir()+"data/ipbanned.txt");  
+  isipbanned = IsIPInList(clientsock,"",getDir()+"config/ipbanned.txt");  
   nextid = 0; 
   if (!isipbanned && players->count<75)  
     nextid = GetFreePlayerID();  
@@ -2005,52 +2109,60 @@ void TServerPlayer::parse(const JString& line) {
         // server->msg <msg>     - Message to server       
 
 	//MySQL Guild Managment, Coded By Gregovich <BEGIN>
-        if (CheckPartofString(LowerCase(data), "guild->del ")) {
-	  data = Copy(data, 12, Length(data)-11);
-	  ServerFrame->SendPrivRCLog(this, "Deleting guild:");
-	  ServerFrame->SendPrivRCLog(this, "" + data);
-	  DeleteGuild(data);
+    if (CheckPartofString(LowerCase(data), "guild->del ")) {
+		data = Copy(data, 12, Length(data)-11);
+		ServerFrame->SendPrivRCLog(this, "Deleting guild:");
+		ServerFrame->SendPrivRCLog(this, "" + data);
+		DeleteGuild(data);
 	} else if (CheckPartofString(LowerCase(data), "guild->memberdel ")) {
-	  data = Copy(data, 18, Length(data)-17);
-char * pch;
-printf ("Splitting string \"%s\" in tokens:\n", data.text());
-pch = strtok((char *)data.text(),",");
-JString accname = pch;
-pch = strtok (NULL, " ,.");
-JString guildname = pch;
-ServerFrame->SendPrivRCLog(this, "Removing GuildMember: " + accname + "\njFrom Guild: " + guildname + " \nj");
-     DelGuildMember(accname, guildname);
+		data = Copy(data, 18, Length(data)-17);
+		char * pch;
+		printf ("Splitting string \"%s\" in tokens:\n", data.text());
+		pch = strtok((char *)data.text(),",");
+		JString accname = pch;
+		pch = strtok (NULL, " ,.");
+		JString guildname = pch;
+		ServerFrame->SendPrivRCLog(this, "Removing GuildMember: " + accname + "\njFrom Guild: " + guildname + " \nj");
+		DelGuildMember(accname, guildname);
+	 
+	 
+	 
 	} else if (CheckPartofString(LowerCase(data), "guild->add ")) {
-ServerFrame->SendPrivRCLog(this, "Creating Guild:\nj");
-data = Copy(data, 12, Length(data)-11);
-char * pch;
-printf ("Splitting string \"%s\" in tokens:\n", data.text());
-pch = strtok((char *)data.text(),",");
-JString accname = pch;
-pch = strtok (NULL, " ,.");
-JString nickname = pch;
-pch = strtok (NULL, " ,.");
-JString guildname = pch;
-JString rank = 5;
-ServerFrame->SendPrivRCLog(this, "Master Account: " + accname + "\njMaster Nickname: " + nickname + "\n");
-ServerFrame->SendPrivRCLog(this, "Guildname: " + guildname);
-CreateGuild(accname, nickname, rank, guildname);
-        } else if (CheckPartofString(LowerCase(data), "guild->memberadd ")) {
-ServerFrame->SendPrivRCLog(this, "Adding Member to Guild:\nj");
-data = Copy(data, 18, Length(data)-17);
-char * pch;
-printf ("Splitting string \"%s\" in tokens:\n", data.text());
-pch = strtok((char *)data.text(),",");
-JString accname = pch;
-pch = strtok (NULL, " ,.");
-JString nickname = pch;
-pch = strtok (NULL, " ,.");
-JString guildname = pch;
-pch = strtok (NULL, " ,.");
-JString rank = pch;
-ServerFrame->SendPrivRCLog(this, "Account: " + accname + "\njNickname: " + nickname + "\n");
-ServerFrame->SendPrivRCLog(this, "Guildname: " + guildname);
-CreateGuild(accname, nickname, rank, guildname);
+		ServerFrame->SendPrivRCLog(this, "Creating Guild:\nj");
+		data = Copy(data, 12, Length(data)-11);
+		char * pch;
+		printf ("Splitting string \"%s\" in tokens:\n", data.text());
+		pch = strtok((char *)data.text(),",");
+		JString accname = pch;
+		pch = strtok (NULL, ",.");
+		JString nickname = pch;
+		pch = strtok (NULL, ",.");
+		JString guildname = pch;
+		JString rank = 5;
+		ServerFrame->SendPrivRCLog(this, "Master Account: " + accname + "\njMaster Nickname: " + nickname + "\n");
+		ServerFrame->SendPrivRCLog(this, "Guildname: " + guildname);
+		CreateGuild(accname, nickname, rank, guildname);
+    } else if (CheckPartofString(LowerCase(data), "guild->memberadd ")) {
+		ServerFrame->SendPrivRCLog(this, "Adding Member to Guild:\nj");
+		data = Copy(data, 18, Length(data)-17);
+		char * pch;
+		printf ("Splitting string \"%s\" in tokens:\n", data.text());
+		pch = strtok((char *)data.text(),",");
+		JString accname = pch;
+		pch = strtok (NULL, ",.");
+		JString nickname = pch;
+		pch = strtok (NULL, ",.");
+		JString guildname = pch;
+		pch = strtok (NULL, ",.");
+		JString rank = pch;
+		ServerFrame->SendPrivRCLog(this, "Account: " + accname + "\njNickname: " + nickname + "\n");
+		ServerFrame->SendPrivRCLog(this, "Guildname: " + guildname);
+		CreateGuild(accname, nickname, rank, guildname);
+
+
+
+
+
 	} else if (LowerCase(data) == "guild->list") {
 	  props = ""; // like string
           props2 = ""; // where string
@@ -2135,7 +2247,7 @@ CreateGuild(accname, nickname, rank, guildname);
           ServerFrame->SendPrivRCLog(this, "End of Help \"server\" component");
         } else if (LowerCase(data) == "subdirs->refresh") {
           subdirs->Clear();
-          RefindAllSubdirs(applicationdir+"levels");
+          RefindAllSubdirs(applicationdir+"server");
           ServerFrame->SendPrivRCLog(this, "Subdirs Component - Refresh: Complete, "+inttostr(subdirs->count)+" Subdirectory(s)");
           ServerFrame->SendOthersRCLog(this, "Subdirectory's information has been refreshed");
         } else if (LowerCase(data) == "subdirs->count") {
@@ -2145,6 +2257,19 @@ CreateGuild(accname, nickname, rank, guildname);
           if ((index >= 0) && (index < subdirs->count)) {
             ServerFrame->SendPrivRCLog(this, "Subdirs Component - List "+inttostr(index)+": "+(*subdirs)[index]);
           }
+		  
+		  
+		  
+		  
+		  
+		  
+		  
+		  
+		  
+		  
+		  
+		  
+		  
         } else if (LowerCase(data) == "subdirs->listall") {
           int icnt;
           ServerFrame->SendPrivRCLog(this, "Subdirs Component - List All:");
@@ -2157,9 +2282,9 @@ CreateGuild(accname, nickname, rank, guildname);
         } else if (LowerCase(data) == "server->version") {
           ServerFrame->SendRCLog("Server version: 1.39.22");
 		//  I don't think this is needed. Zed 2022-12-23
-		//  } else if (LowerCase(data) == "server->version") {
-		//  LoadWeapons("weapons-back.txt");
-		//    ServerFrame->SendRCLog("Weapon cache has been reloaded");
+		} else if (LowerCase(data) == "server->weaponcache") {
+		  LoadWeapons("weapons-back.txt");
+		  ServerFrame->SendRCLog("Weapon cache has been reloaded");
 		} else if (LowerCase(data) == "server->shutdown") {
 #ifdef ALLOW_SHUTDOWN
           if (adminlevel==5 || (isadminin(player->playerworld))) {
@@ -2180,9 +2305,6 @@ CreateGuild(accname, nickname, rank, guildname);
       }
     case DGETPROFILE: {
         props = GetProfile(data);
-//        if (Length(dberror)>0)
-//          std::cout << "get profile error: " << dberror << std::endl;
-//        else
         if (Length(props)>0) {
           for (i=0; i<ServerFrame->players->count; i++) { 
             player = (TServerPlayer*)(*ServerFrame->players)[i]; 
@@ -2484,13 +2606,22 @@ void TServerPlayer::SendAccount(const JString& line) {
   // Get the account
   account = GetAccount(name);
   if (!Assigned(account)) {
+
 	//No user account found. Use a guest account.
 	if ((name != "Guest") && (name != "guest")) {
+		
+		//It really isn't worth making this work. Don't make one letter passwords people!
+		//if (GetStringUTFLength(password) < 2) {
+		//	SendData(DISMESSAGE,JString()+"The password you've entered is too short!");
+		//	delete(account);
+		//	deleteme = true;
+		//}
+		
 		std::cout << std::endl << "Registering a new account!" << std::endl;
 		CreateNewDBAccount(name,password,sock->ip); //Create new account!		
 		account = GetAccount(name);	
 		if (Assigned(account)) {
-			startmessagespecial = "You've registered '" +name+ "' as your account! Note down your username and password so you can come back to it! Enjoy yourself!";
+			startmessagespecial = "You've registered '" +name+ "' as your account! Note down your account name and password so you can come back to it! Enjoy!";
 		}
 	}
 		
@@ -2506,7 +2637,7 @@ void TServerPlayer::SendAccount(const JString& line) {
 					account->password=password;
 					guestips[i] = sock->ip;
 					SendData(DISMESSAGE,JString()+"ID: " + sock->ip + "/" + guestips[i] + " Account: " + name);
-					startmessagespecial = "You have joined the server using the '" +name+ "' guest account!";
+					startmessagespecial = "You have joined the server using the '" +name+ "' guest account! You can create your own account at the login screen by entering a unique account name.";
 					break;
 				}
 			}
@@ -2525,7 +2656,7 @@ void TServerPlayer::SendAccount(const JString& line) {
   }
   
 	if (!comparepassword(account->password,password)) {
-		SendData(DISMESSAGE,JString()+"Incorrect password! Is this is your account? You can create an account by entering a unique account name.");
+		SendData(DISMESSAGE,JString()+"Incorrect password! Is '" + name + "' your account? You can create an account by entering a unique account name. Passwords must be longer than one character.");
 		delete(account);
 		deleteme = true;
 		return;
@@ -2646,7 +2777,7 @@ void TServerPlayer::SendAccount(const JString& line) {
         if (account->adminlevel<1) {
           SendData(DISMESSAGE,JString()+"You don't have GP / admin rights.");
           deleteme = true;
-        } /*else if (!IsIPInList(sock,account->name,ServerFrame->getDir()+"data/ipgps.txt")) {
+        } /*else if (!IsIPInList(sock,account->name,ServerFrame->getDir()+"config/ipgps.txt")) {
           SendData(DISMESSAGE,JString()+"Your IP is not listed in the GP ip list.");
           deleteme = true;
         } */else {
@@ -3187,7 +3318,7 @@ void TServerPlayer::SetProperties(JString str) {
             nickname = "*" + nickname;  
           else while (Pos('*',nickname)==1)  
             nickname = Copy(nickname,2,Length(nickname)-1);  
-          if (Length(nickname)<=0) nickname = "unknown";  
+          if (Length(nickname)<=0) nickname = "Spacer";  
           plainnick = nickname;  
   
           if (VerifyGuildName(guild,nickname,accountname)) {  
@@ -3216,13 +3347,6 @@ void TServerPlayer::SetProperties(JString str) {
       case MAXPOWER: {  
           maxpower = str[2]-32;  
 
-          struct CfgStrings CfgSettings[] =
-          {
-             { "maxpower", NULL },
-             { NULL, NULL }
-          };
-
-          CfgRead("data/settings.txt", CfgSettings);
     
           int maxlimit = 20;
           
@@ -3676,14 +3800,14 @@ void TServerPlayer::updateCurrentLevel() {
 }
 extern int bank(const JString& accname,const char* transt,int value);
 void TServerPlayer::parseChat() {  
-  if (curchat=="unstuck me" || curchat=="unstick me") {  
+  if (curchat=="unstuck me" || curchat=="unstick me" || curchat=="unstickme" || curchat=="unstuckme") {  
     curchat = "";  
     // move him to the starting level  
-    if (nomovementcounter>=30) {
+    if (nomovementcounter>=10) {
       nomovementcounter = 0;
       ToStartLevel(accountname);
     } else {
-      curchat = JString("Don't move for 30 seconds before doing 'unstick me'!");
+      curchat = JString("Try again in ten seconds!");
       SendData(SPLAYERPROPS,JString((char)(CURCHAT+32)) << GetProperty(CURCHAT));
     }
   } else if (Pos("update level",curchat)==1) {  
@@ -3701,10 +3825,15 @@ void TServerPlayer::parseChat() {
     }
   } else if (curchat=="showkills") {
     // send him his current kills count as his own chat text
-    curchat = JString("kills: ") << kills;
+	if (kills == 0) {
+		curchat = JString("I wouldn't hurt anyone!");
+	} else {
+		curchat = JString("Kills: ") << kills;
+	}
     SendData(SPLAYERPROPS,JString((char)(CURCHAT+32)) << GetProperty(CURCHAT));
   }
 if (strstr(level->plainfile.text(), "bank")) {
+	
  if (curchat=="bank balance") {
     // send him his bank balance as the current chat
     curchat = JString("Your bank balance is: ") << bank(accountname,"balance",0);
@@ -3824,7 +3953,7 @@ else if (curchat=="showdeaths") {
     SetShield(Trim(Copy(curchat,10,Length(curchat)-9)));
   } else if (Pos("setsword",curchat)==1) {
     SetSword(Trim(Copy(curchat,9,Length(curchat)-8)));
-  } else if (Pos("setnick",curchat)==1) {
+  } else if ((Pos("setnick",curchat)==1) || (Pos("setname",curchat)==1)) {
     if (changenickcounter<=0) {
       changenickcounter = changenicktimeout;
       JString props = Trim(Copy(curchat,8,Length(curchat)-7));
@@ -3833,9 +3962,39 @@ else if (curchat=="showdeaths") {
       SendData(SPLAYERPROPS,props);
       SetProperties(props);
     } else {
-      curchat = "Wait 10 seconds before changing your nick again!";
+      curchat = "Wait ten seconds before changing your nick name again!";
       SendData(SPLAYERPROPS,JString((char)(CURCHAT+32)) << GetProperty(CURCHAT));   
-    }  
+
+	
+
+	}
+	// Setup waypoints - Zed 2022-12-26
+	} else if ((Pos("waypoint",curchat)==1) or (Pos("Waypoint",curchat)==1)) {  
+		CfgRead("config/settings.txt", CfgSettings);
+		JString i = LowerCase(Trim(Copy(curchat,10,Length(curchat)-8)));
+		int l = 0;
+		std::cout << std::endl << accountname + " wants to go to Waypoint " + i + "." << std::endl;
+		if (i == "1") {
+			l = 1;
+		} else if (i == "2") {
+			l = 2;
+		} else if (i == "3") {
+			l = 3;
+		} else if (i == "4") {
+			l = 4;
+		} else if (i == "5") {
+			l = 5;
+		} else if (i == "6") {
+			l = 6;
+		} else if (i == "7") {
+			l = 7;
+		} else if (i == "8") {
+			l = 8;
+		} else if (i == "9") {
+			l = 9;
+		}
+		ToWaypointLevel(accountname, JString(CfgSettings[1+(l*3)].data), atoi(CfgSettings[2+(l*3)].data), atoi(CfgSettings[3+(l*3)].data));
+
   } else if (Pos("warpto",curchat)==1 && adminlevel>=1 && isadminin(playerworld)) {  
     JString props = Trim(Copy(curchat,7,Length(curchat)-6));  
     int i = Pos(' ',props);  
@@ -4217,7 +4376,7 @@ void TServerFrame::Timer1Timer() {
  //   SaveHTMLStats(true);
 unsigned int upseconds = time(NULL)-starttime;
 UpdateStats((JString()+players->count),(JString()+GetAccountCount()),(JString()+(upseconds/3600)+" hrs "+((upseconds/60)%60)+" mins"),/*(JString()+maxplayersonserver)*/"75");
-    serverflags->SaveToFile(getDir()+"data/serverflags.txt");  
+    serverflags->SaveToFile(getDir()+"config/serverflags.txt");  
   }  
 }  
 // oh noesss more crappy coding replaced w/ leet wholesome mysql goodness!! yeahhhh!!
@@ -4330,7 +4489,7 @@ int main(int argc, char *argv[])
   }
 
   subdirs->Clear();
-  RefindAllSubdirs(applicationdir+"levels");
+  RefindAllSubdirs(applicationdir+"server");
 
   itemnames->SetPlainMem();
   itemnames->SetCommaText(JString()+"greenrupee,bluerupee,redrupee,bombs,darts,heart,glove1,"+  

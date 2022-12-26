@@ -1,0 +1,38 @@
+; Configuration File for Zed Server 1.39.22
+
+; Maximum Hearts (that can be obtained)
+maxpower=20
+
+; Unstick Me Level, AKA Waypoint 0
+unstickme_level=onlinestartlocation.zelda
+unstickme_x=17.5
+unstickme_y=24
+
+; Waypoints
+waypoint1_level=onlinestartlocation.zelda
+waypoint1_x=17.5
+waypoint1_y=24
+waypoint2_level=onlinestartlocation.zelda
+waypoint2_x=32
+waypoint2_y=32
+waypoint3_level=onlinestartlocation.zelda
+waypoint3_x=40
+waypoint3_y=40
+waypoint4_level=onlinestartlocation.zelda
+waypoint4_x=40
+waypoint4_y=40
+waypoint5_level=onlinestartlocation.zelda
+waypoint5_x=40
+waypoint5_y=40
+waypoint6_level=onlinestartlocation.zelda
+waypoint6_x=40
+waypoint6_y=40
+waypoint7_level=onlinestartlocation.zelda
+waypoint7_x=40
+waypoint7_y=40
+waypoint8_level=onlinestartlocation.zelda
+waypoint8_x=40
+waypoint8_y=40
+waypoint9_level=onlinestartlocation.zelda
+waypoint9_x=40
+waypoint9_y=40

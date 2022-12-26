@@ -57,7 +57,7 @@ void connecttodb() {
     char* mys_database = "gserver";
     char* mys_socket = "/tmp/mysql.sock";  	
   
-    CfgRead("data/mysql.txt", CfgMySQL);
+    CfgRead("config/mysql.txt", CfgMySQL);
     
     for (int i = 0; i < 5; i++) {
       if (CfgMySQL[i].name == "server")
@@ -295,7 +295,7 @@ TServerAccount* GetAccount(const JString& name) {
     account->onlyload = (atoi(row[4])>0);
     account->adminlevel = atoi(row[5]);
     account->adminworlds = row[6];
-//    account->lastused = row[7];
+    //account->lastused = row[7]; //class TServerAccount has no member named lastused!
   } else
     dberror = JString("Couldn't get account: no database entry found");
   mysql_free_result(res);
@@ -313,6 +313,7 @@ bool IsInGuild(const JString& accname,const JString& name,const JString& guild) 
 
   MYSQL_RES* res;
   JString query = "SELECT * FROM guilds WHERE guildname='"+escaped39(guild)+"' AND accname='"+escaped39(accname)+"'";
+  
   if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) { 
   return false;
   }
@@ -653,11 +654,10 @@ void DeleteAccount(const JString& accname, int adminlevel) {
   }
   delete(list);
 }
-void CreateGuild(const JString& accname, const JString& player, const JString& rank,const JString& guildname) {
+void CreateGuild(const JString& accname, const JString& player, const JString& rank,const JString& guildname) {	
   dberror = "";
   connecttodb();
   if (!sqlok) return;
-
   JString query = "INSERT INTO guilds (accname,player,rank,guildname) VALUES";
   query << " ('" << escaped39(accname) << "', '" << escaped39(player) << "', " << escaped39(rank) << ", '" << escaped39(guildname) << "')";
   if (mysql_query(mysql,query.text()))

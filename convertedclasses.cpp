@@ -364,7 +364,7 @@ void TStream::LoadFromFile(JString filename) {
     in.seekg(0,std::ios::beg);
     JString lfile = LowerCaseFilename(filename);
 
-    if (lfile=="data/weapons.txt" || insize<64000) {
+    if (lfile=="config/weapons.txt" || insize<64000) {
       buf.buffer = (unsigned char*)malloc(insize+1);
       in.read((char*)buf.buffer,insize);
       buf.buffer[insize] = 0;

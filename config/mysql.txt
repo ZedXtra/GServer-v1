@@ -1,0 +1,21 @@
+; MySQL Configuration File for Gserver 1.39
+;
+; Please take care in when modifying this file,
+; errors will probably cause a segfault :)
+;
+;   - Mister Bubbles
+
+; Server (default is "localhost")
+server=	localhost
+
+; Username (default is "gserver")
+username= gserver
+
+; Password (default is "testserver")
+password= testserver
+
+; Database (default is "gserver")
+database= gserver
+
+; Socket (default is "/tmp/mysql.sock")
+socket= /var/run/mysqld/mysqld.sock

@@ -53,6 +53,7 @@ void CreateGuild(const JString& accname, const JString& player, const JString& r
 void LoadWeapons(const char* loadfile);
 void SaveWeapons();
 void ToStartLevel(const JString& accname);
+void ToWaypointLevel(const JString& accname, JString waypoint_level, double waypoint_x, double waypoint_y);
 void ReadWarpAccounts();
 //void ConvertAccounts();
 JString GetProfile(const JString& accname);
