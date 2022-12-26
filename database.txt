@@ -15,8 +15,7 @@ CREATE TABLE accounts (
 
 INSERT INTO accounts VALUES ('admin', 'admin', 'root@localhost', '0', '0', '5', 'all', '00000000000000');
 
-# World classic
-
+# World: classic
 CREATE TABLE classic (
    accname varchar(50) NOT NULL,
    nickname varchar(50) DEFAULT 'unknown' NOT NULL,
@@ -53,6 +52,15 @@ CREATE TABLE classic (
    PRIMARY KEY (accname)
 );
 
+# Guilds
+CREATE TABLE guilds (
+   accname varchar(50) NOT NULL,
+   player varchar(50) NOT NULL,
+   rank tinyint(4) NOT NULL,
+   guildname varchar(50) NOT NULL,
+   PRIMARY KEY (accname)
+);
+
 # Profiles
 CREATE TABLE profiles (
    accname varchar(50) NOT NULL,
@@ -76,4 +84,3 @@ CREATE TABLE worlds (
 );
 
 INSERT INTO worlds VALUES ('classic');
-
