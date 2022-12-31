@@ -3,6 +3,10 @@
 ; Maximum Hearts (that can be obtained)
 maxpower=20
 
+; Password Encryption
+hash_len=512
+hash_key=masterkey.
+
 ; Unstick Me Level, AKA Waypoint 0
 unstickme_level=onlinestartlocation.zelda
 unstickme_x=17.5

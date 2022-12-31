@@ -3,7 +3,7 @@ USE gserver;
 # Accounts
 CREATE TABLE accounts (
    accname varchar(50) NOT NULL,
-   encrpass varchar(13) NOT NULL,
+   encrpass varchar(100) NOT NULL,
    email varchar(100),
    blocked tinyint(4) DEFAULT '0',
    onlyload tinyint(4) DEFAULT '0' NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE classic (
    nickname varchar(50) DEFAULT 'unknown' NOT NULL,
    x float(10,2) DEFAULT '30.50' NOT NULL,
    y float(10,2) DEFAULT '30.00' NOT NULL,
-   level varchar(80) DEFAULT 'onlinestartlocal.graal' NOT NULL,
+   level varchar(80) DEFAULT 'onlinestartlocation.zelda' NOT NULL,
    maxhp int(11) DEFAULT '6' NOT NULL,
    hp int(11) DEFAULT '6' NOT NULL,
    rupees int(11) DEFAULT '0' NOT NULL,

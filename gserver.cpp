@@ -76,7 +76,9 @@ struct CfgStrings CfgSettings[] =
 	{ "waypoint8_y", NULL },
 	{ "waypoint9_level", NULL },
 	{ "waypoint9_x", NULL },
-	{ "waypoint9_y", NULL }
+	{ "waypoint9_y", NULL },
+	{ "hash_len", NULL },
+	{ "hash_key", NULL }
 };
 
 TServerFrame* ServerFrame;
@@ -343,7 +345,7 @@ void TServerFrame::startServer(const JString& port) {
 	if (!sock->sock) std::cout << "Couldn't bind the response socket" << std::endl;  
 	else std::cout << "Response socket established at port 14899" << std::endl;  
 	  
-	curdir = getDir()+"server"+fileseparator;  
+	curdir = getDir()+"data"+fileseparator;  
 	savepropscounter = 60;  
 	starttime = time(NULL);
 	starttime_global = starttime;
@@ -388,6 +390,8 @@ void TServerFrame::startServer(const JString& port) {
 	//28 = waypoint9_level
 	//29 = waypoint9_x
 	//30 = waypoint9_y
+	//31 = hash_len
+	//32 = hash_key
 	
 	if (CfgSettings[1].data == NULL) {
 		
@@ -2247,7 +2251,7 @@ void TServerPlayer::parse(const JString& line) {
           ServerFrame->SendPrivRCLog(this, "End of Help \"server\" component");
         } else if (LowerCase(data) == "subdirs->refresh") {
           subdirs->Clear();
-          RefindAllSubdirs(applicationdir+"server");
+          RefindAllSubdirs(applicationdir+"data");
           ServerFrame->SendPrivRCLog(this, "Subdirs Component - Refresh: Complete, "+inttostr(subdirs->count)+" Subdirectory(s)");
           ServerFrame->SendOthersRCLog(this, "Subdirectory's information has been refreshed");
         } else if (LowerCase(data) == "subdirs->count") {
@@ -2551,7 +2555,7 @@ void TServerPlayer::loginerror(const JString& str) {
 }
 
 void TServerPlayer::SendAccount(const JString& line) {
-  JString version, data, name, password, props, props2, props3;
+  JString version, data, name, jpassword, password, hash, props, props2, props3;
   int len, i, j, clienttype;  
   TServerAccount* account;  
   TServerPlayer* player;  
@@ -2601,22 +2605,72 @@ void TServerPlayer::SendAccount(const JString& line) {
   if (Length(data)<1) { loginerror(line); return; }  
   len = data[1]-32;  
   if (Length(data)<1+len) { loginerror(line); return; }  
-  password = Copy(data,2,len);
 
   // Get the account
   account = GetAccount(name);
+  // Fixes a < 2 character password issue.
+  
+  //RETURN
+  
+	password = Copy(data,2,len);
+	jpassword = password; //Just in case the password is manually set in the database.
+	hash = password + JString(CfgSettings[32].data);
+	//Look I'm Yandere!
+	if (Length(password) > 8) {
+		password = "a11" + LowerCase(Trim(Copy(password,5,Length(password)-4)));
+		hash = "a11" + LowerCase(Trim(Copy(hash,5,Length(hash)-4)));
+	} else if (Length(password) > 7) {
+		password = "a9" + LowerCase(Trim(Copy(password,4,Length(password)-3)));
+		hash = "a9" + LowerCase(Trim(Copy(hash,4,Length(hash)-3)));
+	} else if (Length(password) > 5) {
+		password = "a6" + LowerCase(Trim(Copy(password,3,Length(password)-2)));
+		hash = "a6" + LowerCase(Trim(Copy(hash,3,Length(hash)-2)));
+	} else if (Length(password) > 3) {
+		password = "a4" + LowerCase(Trim(Copy(password,1,Length(password)-0)));
+		hash = "a4" + LowerCase(Trim(Copy(hash,1,Length(hash)-0)));
+	} 
+	password = name + password;
+	hash = JString(CfgSettings[32].data) + hash;
+	if (Length(password) > 30) {
+		password = "b30" + LowerCase(Trim(Copy(password,25,Length(password)-24)));
+		hash = "b11" + LowerCase(Trim(Copy(hash,5,Length(hash)-4)));
+	} else if (Length(password) > 25) {
+		password = "b25" + LowerCase(Trim(Copy(password,15,Length(password)-14)));
+		hash = "b11" + LowerCase(Trim(Copy(hash,3,Length(hash)-2)));
+	} else if (Length(password) > 20) {
+		password = "b20" + LowerCase(Trim(Copy(password,10,Length(password)-9)));
+		hash = "b11" + LowerCase(Trim(Copy(hash,2,Length(hash)-1)));
+	} else if (Length(password) > 15) {
+		password = "b15" + LowerCase(Trim(Copy(password,7,Length(password)-6)));
+		hash = "b11" + LowerCase(Trim(Copy(hash,1,Length(hash)-0)));
+	} else if (Length(password) > 10) {
+		password = "b10" + LowerCase(Trim(Copy(password,6,Length(password)-5)));
+	} 
+	password = JString(CfgSettings[32].data) + password;
+	hash = "@hotmail" + hash;
+	if (Length(password) > 30) {
+		password = "c30" + LowerCase(Trim(Copy(password,5,Length(password)-4)));
+		hash = "c30" + LowerCase(Trim(Copy(hash,25,Length(hash)-24)));
+	} else if (Length(password) > 25) {
+		password = "c25" + LowerCase(Trim(Copy(password,4,Length(password)-3)));
+		hash = "c25" + LowerCase(Trim(Copy(hash,20,Length(hash)-19)));
+	} else if (Length(password) > 20) {
+		password = "c20" + LowerCase(Trim(Copy(password,3,Length(password)-2)));
+		hash = "c20" + LowerCase(Trim(Copy(hash,10,Length(hash)-9)));
+	} else if (Length(password) > 15) {
+		password = "c15" + LowerCase(Trim(Copy(password,1,Length(password)-0)));
+		hash = "c15" + LowerCase(Trim(Copy(hash,3,Length(hash)-2)));
+	} 
+	password = password + hash;
+
+
+	
+  
+  
   if (!Assigned(account)) {
 
 	//No user account found. Use a guest account.
 	if ((name != "Guest") && (name != "guest")) {
-		
-		//It really isn't worth making this work. Don't make one letter passwords people!
-		//if (GetStringUTFLength(password) < 2) {
-		//	SendData(DISMESSAGE,JString()+"The password you've entered is too short!");
-		//	delete(account);
-		//	deleteme = true;
-		//}
-		
 		std::cout << std::endl << "Registering a new account!" << std::endl;
 		CreateNewDBAccount(name,password,sock->ip); //Create new account!		
 		account = GetAccount(name);	
@@ -2642,7 +2696,7 @@ void TServerPlayer::SendAccount(const JString& line) {
 				}
 			}
 			if (i == sizeof(guestaccounts)/sizeof(guestaccounts[0])-1){
-				//Out of guest accounts. Kick unknown client.
+				//Out of guest accounts. Kick this unknown client.
 				if (password == 1998) {
 					SendData(DISMESSAGE,JString()+"The account name is incorrect! Want an account? Check the Discord!");
 				} else {
@@ -2655,8 +2709,9 @@ void TServerPlayer::SendAccount(const JString& line) {
 	}
   }
   
-	if (!comparepassword(account->password,password)) {
-		SendData(DISMESSAGE,JString()+"Incorrect password! Is '" + name + "' your account? You can create an account by entering a unique account name. Passwords must be longer than one character.");
+	if ((!comparepassword(account->password,password)) && (!comparepassword(account->password,jpassword))) {
+	//if (!comparepassword(account->password,jpassword)) {
+		SendData(DISMESSAGE,JString()+"Incorrect password! Is '" + name + "' your account? You can create an account by entering a unique account name.");
 		delete(account);
 		deleteme = true;
 		return;
@@ -3971,7 +4026,7 @@ else if (curchat=="showdeaths") {
 	// Setup waypoints - Zed 2022-12-26
 	} else if ((Pos("waypoint",curchat)==1) or (Pos("Waypoint",curchat)==1)) {  
 		CfgRead("config/settings.txt", CfgSettings);
-		JString i = LowerCase(Trim(Copy(curchat,10,Length(curchat)-8)));
+		JString i = LowerCase(Trim(Copy(curchat,10,Length(curchat)-9)));
 		int l = 0;
 		std::cout << std::endl << accountname + " wants to go to Waypoint " + i + "." << std::endl;
 		if (i == "1") {
@@ -4489,7 +4544,7 @@ int main(int argc, char *argv[])
   }
 
   subdirs->Clear();
-  RefindAllSubdirs(applicationdir+"server");
+  RefindAllSubdirs(applicationdir+"data");
 
   itemnames->SetPlainMem();
   itemnames->SetCommaText(JString()+"greenrupee,bluerupee,redrupee,bombs,darts,heart,glove1,"+  
