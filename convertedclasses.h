@@ -61,6 +61,7 @@ class TJStringList {
   JString GetCommaText();
   JString getValue(JString str);
   void LoadFromFile(const JString& filename);
+  void AddLine(const JString& addline);
   void SaveToFile(JString filename);
   void SetPlainMem();
 

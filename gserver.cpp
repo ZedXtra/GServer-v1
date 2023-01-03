@@ -350,12 +350,12 @@ void TServerFrame::startServer(const JString& port) {
 	starttime = time(NULL);
 	starttime_global = starttime;
 	//ConvertAccounts();
-	LoadWeapons("weapons.txt");
+	//ImportWeapons("weapons.txt");
   
   
-	std::cout << std::endl << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"		<< std::endl;
+	//std::cout << std::endl << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"		<< std::endl;
 	
-	std::cout << std::endl << "Zed Server v1.39.22" << std::endl;
+	std::cout << std::endl << "Zed Server v1.39.23" << std::endl;
   
 	CfgRead("config/settings.txt", CfgSettings);
 	
@@ -1052,6 +1052,7 @@ void TServerPlayer::SendWeaponsAndImages() {
         else  
           SendData(SADDNPCWEAPON,weapon->fullstr);  
         hassent = true;
+		std::cout << weapon->fullstr << std::endl;  //temp
         break;  
       }  
     }  
@@ -1060,9 +1061,11 @@ void TServerPlayer::SendWeaponsAndImages() {
       if (Assigned(weapon) && name==LowerCase(weapon->name) && Length(weapon->world)<=0) {  
         SendData(SADDNPCWEAPON,weapon->fullstr);  
         hassent = true;  
+		std::cout << weapon->fullstr << std::endl;  //temp
         break;  
       }  
-    }  
+    }
+
   }  
   while (imagestosend->count>0) {  
     if (isblocked()) return;  
@@ -1637,6 +1640,8 @@ void TServerPlayer::parse(const JString& line) {
         j = data[1]-32;  
         JString name;  
   
+		std::cout << "ADDWEAPON2 - "; 
+  
         // Try to add the new weapon  
         if (j==0) {
           if (Length(data)<2) return;  
@@ -1647,12 +1652,16 @@ void TServerPlayer::parse(const JString& line) {
           name = (*itemnames)[i];  
           if (myweapons->indexOf(name)>=0) return;  
           myweapons->Add((*itemnames)[i]);  
+			std::cout << "Type 0 Weapon" << std::endl; 
+  
   
         } else {  
+		std::cout << "Type 1 Weapon - "; 
           if (Length(data)<4 || !Assigned(level)) return;  
   
           // Type 1: a weapon which called the 'toweapons' script command  
           // Lets search for the npc and try to add a new weapon
+		
           npcid = ((data[2]-32) << 14) + ((data[3]-32) << 7) + (data[4]-32);  
           for (i=0; i<level->npcs->count; i++) {  
             TServerNPC* npc = (TServerNPC*)(*level->npcs)[i];  
@@ -1660,21 +1669,27 @@ void TServerPlayer::parse(const JString& line) {
               if (Length(npc->startimage)<=0) return;  
   
               name = npc->GetWeaponName();  
+			  std::cout << "if (Length(name)<=0) return return "; 
               if (Length(name)<=0) return;  
               // Check if we already have this weapon;  
               // if yes, then don't add a new one  
-              if (myweapons->indexOf(name)>=0) return;  
+			  //std::cout << "if (myweapons->indexOf(name)>=0) return "; 
+              //if (myweapons->indexOf(name)>=0) return;  
+			  std::cout << "myweapons->Add(name) "; 
               myweapons->Add(name);  
   
               // Search for weapons in the weapons list that  
               // we can replace; if there is no weapon with the  
               // name yet then add a new TServerWeapon  
               TServerWeapon* replaceweapon = NULL;  
+			  std::cout << "for (j=0; j<weapons->count; j++) "; 
               for (j=0; j<weapons->count; j++) {
                 TServerWeapon* weapon = (TServerWeapon*)(*weapons)[j];  
+				std::cout << "if (Assigned(weapon) && weapon->name==name && weapon->world==playerworld) "; 
                 if (Assigned(weapon) && weapon->name==name && weapon->world==playerworld) {  
                   // Don't replace the existing weapon if it's newer  
                   // than the current level  
+				   std::cout << "Newer Existing Weapon"; 
                   if (weapon->modtime>=level->modtime) return;  
                   replaceweapon = weapon;  
                   break;  
@@ -1682,6 +1697,7 @@ void TServerPlayer::parse(const JString& line) {
               }  
               // Update the found weapon / add a new weapon to the  
               // weapons list  
+			  std::cout << "if (!Assigned(replaceweapon)) "; 
               if (!Assigned(replaceweapon)) {  
                 replaceweapon = new TServerWeapon();  
                 replaceweapon->name = name;
@@ -1690,6 +1706,7 @@ void TServerPlayer::parse(const JString& line) {
               replaceweapon->image = npc->startimage;  
               replaceweapon->modtime = level->modtime;  
               replaceweapon->dataforplayer.clear();  
+			  std::cout << "if (Length(playerworld)>0) "; 
               if (Length(playerworld)>0)   
                 replaceweapon->dataforplayer << JString((char)(Length(name)+32)) << name  
                   << (char)(0+32) << (char)(Length(npc->startimage)+32) << npc->startimage    
@@ -1700,10 +1717,18 @@ void TServerPlayer::parse(const JString& line) {
                 << (char)(0+32) << (char)(Length(npc->startimage)+32) << npc->startimage  
                 << (char)(1+32) << npc->GetProperty(1);  
               if (weapons->indexOf(replaceweapon)<0)  
-                weapons->Add(replaceweapon);
-              SaveWeapons();
-              ServerFrame->toerrorlog(JString("New weapon: ") << name);
-              break;
+				weapons->Add(replaceweapon);
+				//Write the weapon to the database.
+				CreateNewDBWeapon(name, npc->startimage, playerworld, level->modtime);
+				//Write the script to its own text file.
+				TJStringList* writelist = new TJStringList();
+				writelist->AddLine(replaceweapon->fullstr);
+				writelist->SaveToFile(ServerFrame->getDir() << "config/weapons/" << name << ".txt");
+				delete(writelist);
+
+				SaveWeapons();
+				ServerFrame->toerrorlog(JString("New weapon: ") << name);
+				break;
             }
           }
         }
@@ -2284,11 +2309,18 @@ void TServerPlayer::parse(const JString& line) {
           upseconds = time(NULL)-starttime_global;
           ServerFrame->SendRCLog("Server uptime: " + inttostr(upseconds / 3600) + " hrs " + inttostr((upseconds / 60) % 60) + " mins");
         } else if (LowerCase(data) == "server->version") {
-          ServerFrame->SendRCLog("Server version: 1.39.22");
-		//  I don't think this is needed. Zed 2022-12-23
-		} else if (LowerCase(data) == "server->weaponcache") {
-		  LoadWeapons("weapons-back.txt");
-		  ServerFrame->SendRCLog("Weapon cache has been reloaded");
+          ServerFrame->SendRCLog("Server version: 1.39.23");
+		} else if (LowerCase(data) == "accounts->count") {
+			ServerFrame->SendRCLog(CountDBTable("accounts"));
+		} else if (LowerCase(data) == "weapons->load") {
+			LoadWeapons();
+			ServerFrame->SendRCLog("Weapons have been loaded from the database into memory.");
+		} else if (LowerCase(data) == "weapons->count") {
+			ServerFrame->SendRCLog(CountDBTable("weapons"));
+		} else if (LowerCase(data) == "weapons->import") {
+			ImportWeapons("weapons.txt");
+			ImportWeapons("weapons-back.txt");
+			ServerFrame->SendRCLog("Weapon cache has been reloaded.");
 		} else if (LowerCase(data) == "server->shutdown") {
 #ifdef ALLOW_SHUTDOWN
           if (adminlevel==5 || (isadminin(player->playerworld))) {
@@ -2588,7 +2620,7 @@ void TServerPlayer::SendAccount(const JString& line) {
     }
 #else
     if (clienttype==CLIENTPLAYER) {
-      SendData(DISMESSAGE,JString()+"You need version 1.38 rev1 - 1.39 rev 1 to play on this server.");
+      SendData(DISMESSAGE,JString()+"You need version 1.39 to play on this server!");
     } else {
       SendData(DISMESSAGE,JString()+"You need RC 2000/7/7 to connect to this server.");
     }
@@ -2608,10 +2640,8 @@ void TServerPlayer::SendAccount(const JString& line) {
 
   // Get the account
   account = GetAccount(name);
-  // Fixes a < 2 character password issue.
-  
-  //RETURN
-  
+	// Fixes a < 2 character password issue.
+
 	password = Copy(data,2,len);
 	jpassword = password; //Just in case the password is manually set in the database.
 	hash = password + JString(CfgSettings[32].data);
@@ -2669,16 +2699,21 @@ void TServerPlayer::SendAccount(const JString& line) {
   
   if (!Assigned(account)) {
 
-	//No user account found. Use a guest account.
 	if ((name != "Guest") && (name != "guest")) {
+		
+		
+		
+		
 		std::cout << std::endl << "Registering a new account!" << std::endl;
-		CreateNewDBAccount(name,password,sock->ip); //Create new account!		
+		CreateNewDBAccount(name,password,sock->ip); //Create new account!	
+
 		account = GetAccount(name);	
 		if (Assigned(account)) {
-			startmessagespecial = "You've registered '" +name+ "' as your account! Note down your account name and password so you can come back to it! Enjoy!";
+			startmessagespecial = "You've registered '" +name+ "' as your account! Note down your account name and password so you can come back to it!";
 		}
 	}
-		
+
+	//No user account found. Use a guest account.
 	if (!Assigned(account)) {
 		for (int i = 0; i < sizeof(guestaccounts)/sizeof(guestaccounts[0]); i++) {
 			if ((guestips[i] < 200) or (guestips[i] == sock->ip)) {
@@ -2746,6 +2781,9 @@ void TServerPlayer::SendAccount(const JString& line) {
           SendData(DISMESSAGE,JString()+"The account is already in use.");
           deleteme = true;
         } else {
+		  //Load weapons from database.
+		  LoadWeapons();
+
 
           // copy the account props to this player entity
           accountname = account->name;
@@ -4524,7 +4562,7 @@ int main(int argc, char *argv[])
   //pconv->decimal_point = ".";  
   applicationdir = ExtractFilepath(JString()+my_getcwd()+fileseparator);
   
-  std::cout << std::endl << "Zed Server v1.39.22" << std::endl;
+  std::cout << std::endl << "Zed Server v1.39.23" << std::endl;
   //TODO: Work out credits. Why couldn't you guys just be clear?
   //std::cout << "Sorta made by: Mafukie, Mister Bubbles, & Hell Raven" << std::endl;
   //std::cout << "Modified by: JustBurn, Gregovich and Lucifer" << std::endl;

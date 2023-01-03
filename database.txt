@@ -52,6 +52,15 @@ CREATE TABLE classic (
    PRIMARY KEY (accname)
 );
 
+# Weapons
+CREATE TABLE weapons (
+   name varchar(100) NOT NULL,
+   image varchar(100) NOT NULL,
+   world tinyint(4) NOT NULL,
+   modtime int(10) unsigned NOT NULL,
+   PRIMARY KEY (name)
+);
+
 # Guilds
 CREATE TABLE guilds (
    accname varchar(50) NOT NULL,

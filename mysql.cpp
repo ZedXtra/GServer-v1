@@ -87,6 +87,103 @@ void connecttodb() {
   }    
 }
 
+int CountDBTable(JString table) {
+	dberror = "";
+	MYSQL_RES* res;
+	JString query = "SELECT COUNT(*) FROM "+table+";";
+	if (mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) {
+		dberror = JString("Loading failed: couldn't remove old weapon: ") << mysql_error(mysql);
+		std::cout << std::endl << dberror << std::endl;
+		return;
+	}
+	if (res) {
+		MYSQL_ROW row = mysql_fetch_row(res);
+		return atoi(row[0]);
+		//return 6;
+	}
+}
+
+void LoadDBWeapons(int i) {
+	dberror = "";
+	MYSQL_RES* res;
+	JString index = i;
+	JString query = "SELECT * FROM weapons LIMIT "+index+",1;";
+	if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) {
+		dberror = JString("Loading weapon failed: ") << mysql_error(mysql);
+		std::cout << std::endl << dberror << std::endl;
+		return;
+	}
+	if (res) {
+		MYSQL_ROW row = mysql_fetch_row(res);
+		std::cout << row[0] << std::endl;
+		
+		TServerWeapon* weapon;
+		weapon = new TServerWeapon();
+		
+		
+		weapon = new TServerWeapon();
+		weapon->name = row[0];
+		weapon->image = row[1];
+		weapon->world = row[2];
+		weapon->modtime = atoi(row[3]);
+		weapon->fullstr = "";
+		//Import weapon's script from text file.
+		TJStringList* list = new TJStringList();
+		list->LoadFromFile(ServerFrame->getDir() << "config/weapons/" << row[0] << ".txt");
+		weapon->fullstr = (*list)[0];
+		delete(list);
+
+
+
+		//if (Length(row[2])>0) {
+		//  weapon->dataforplayer = JString((char)(Length(row[0])+32)) << row[0]
+		//	<< Copy(str,j,Length(str)-j+1);
+		//} 
+		
+		weapons->Add(weapon);
+		
+	}
+
+
+}
+
+void CreateNewDBWeapon(JString name, JString image, JString world, unsigned int modtime) {
+	dberror = "";
+	MYSQL_RES* res;
+	JString query = "SELECT * FROM weapons WHERE name='"+name+"'";
+	if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) {
+		dberror = JString("Loading weapon failed: ") << mysql_error(mysql);
+		return;
+	}
+	MYSQL_ROW row = mysql_fetch_row(res);
+	if (row) {
+		mysql_free_result(res);
+		JString query2 = "DELETE FROM weapons WHERE name='"+name+"';";
+		if (mysql_query(mysql,query2.text())) {
+			dberror = JString("Loading failed: couldn't remove old weapon: ") << mysql_error(mysql) ;
+			std::cout << std::endl << dberror << std::endl;
+		}
+	}
+	// Create weapon if it doesn't already exist.
+	std::cout << "[Debug: name]" << name << std::endl;
+	std::cout << "[Debug: image]" << image << std::endl;
+	std::cout << "[Debug: world]" << world << std::endl;
+	std::cout << "[Debug: modtime]" << modtime << std::endl;
+	//Create txt file for the full string.
+	//std::string WeaponString = ServerFrame->getDir() << "config/testtest.txt.";
+	//std::ofstream WeaponTXT(ServerFrame->getDir() << "config/testtest.txt.");
+	//std::ofstream WeaponTXT(WeaponString);
+	//std::ofstream WeaponTXT("test" + name + ".txt.");
+	//WeaponTXT << "hi" << std::endl;
+	//WeaponTXT.close();
+	//Put the rest in the database.
+	JString query2 = "INSERT INTO weapons (name, image, world, modtime) VALUES ('"+name+"','"+image+"','"+world+"','"+modtime+"')";
+	if (mysql_query(mysql,query2.text())) {
+		dberror = JString("Loading failed: couldn't create a db entry: ") << mysql_error(mysql) ;
+		std::cout << std::endl << dberror << std::endl;
+	}
+}
+
 void CreateNewDBAccount(JString name, JString password, int id) {
 	dberror = "";
 	JString query2 = "INSERT INTO accounts (accname, encrpass, email) VALUES ('"+name+"','"+password+"','"+id+"')";

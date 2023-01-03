@@ -36,6 +36,10 @@ class TServerWeapon {
   JString dataforplayer;
 };
 
+
+int CountDBTable(JString table);
+void LoadDBWeapons(int i);
+void CreateNewDBWeapon(JString name, JString image, JString world, unsigned int modtime);
 void CreateNewDBAccount(JString name, JString password, int id);
 void LoadDBAccount(TServerPlayer* player, const JString& name, JString world);
 void SaveDBAccount(TServerPlayer* player);
@@ -50,7 +54,8 @@ void DelGuildMember(const JString& accname, const JString& guildname);
 JString ListGuild(const JString& likestr, const JString& wherestr);
 JString ListGuildMembers(const JString& likestr, const JString& wherestr, const JString& guildname);
 void CreateGuild(const JString& accname, const JString& player, const JString& rank,const JString& guildname);
-void LoadWeapons(const char* loadfile);
+void ImportWeapons(const char* loadfile);
+void LoadWeapons();
 void SaveWeapons();
 void ToStartLevel(const JString& accname);
 void ToWaypointLevel(const JString& accname, JString waypoint_level, double waypoint_x, double waypoint_y);

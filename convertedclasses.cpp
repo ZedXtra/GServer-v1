@@ -304,6 +304,11 @@ JString TJStringList::getValue(JString str) {
   return JString();
 }
 
+void TJStringList::AddLine(const JString& addline) {
+	Clear();
+    Add(addline);
+}
+
 void TJStringList::LoadFromFile(const JString& filename) {
   Clear();
   if (FileExists(filename)) {

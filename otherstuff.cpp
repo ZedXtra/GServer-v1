@@ -16,10 +16,12 @@ TServerAccount::TServerAccount() {
   adminlevel = 0;
 }
 
-void LoadWeapons(const char* loadfile) {
+void ImportWeapons(const char* loadfile) {
+	//Works only once her server restart.
   unsigned int curtime = time(NULL);
   TJStringList* list = new TJStringList();
   list->LoadFromFile(ServerFrame->getDir() << "config/" << loadfile);
+  
 cout << loadfile << endl;
   int k;
   int z;
@@ -69,17 +71,39 @@ cout << "[Debug: continue]" << endl;
     weapon->world = world;
     weapon->modtime = curtime;
     weapon->fullstr = str;
-    cout << "[Debug: weapon]" << "Weapon added:" << weapon->name << endl;
-    cout << "[Debug: weapon]" << weapon->image << endl;
-    cout << "[Debug: weapon]" << weapon->world << endl;
-    cout << "[Debug: weapon]" << weapon->fullstr << endl;
-    cout << "[Debug: weapon]" << weapon->dataforplayer << endl;
-    if (Length(world)>0)
+    //cout << "[Debug: weapon]" << "Weapon added:" << weapon->name << endl;
+    //cout << "[Debug: weapon]" << weapon->image << endl;
+    //cout << "[Debug: weapon]" << weapon->world << endl;
+    //cout << "[Debug: weapon]" << weapon->fullstr << endl;
+    //cout << "[Debug: weapon]" << weapon->dataforplayer << endl;
+    if (Length(world)>0) {
       weapon->dataforplayer = JString((char)(Length(name)+32)) << name
         << Copy(str,j,Length(str)-j+1);
+	} 
+	//Write weapon to its own text file.
+	TJStringList* writelist = new TJStringList();
+	writelist->AddLine(str);
+	writelist->SaveToFile(ServerFrame->getDir() << "config/weapons/" << name << ".txt");
+	delete(writelist);
+	CreateNewDBWeapon(name, image, world, curtime); //Add weapon to database!
+		
     weapons->Add(weapon);
   }
   delete(list);
+  
+  
+  
+}
+
+
+
+
+void LoadWeapons() {
+	//Load weapons from the database.
+	for (int i=0; i<CountDBTable("weapons"); i++) {
+		std::cout << i << std::endl;
+		LoadDBWeapons(i);
+	}
 }
 
 // Save the weapons list to weapons.txt (just take the fullstr
