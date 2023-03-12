@@ -43,6 +43,9 @@ void CreateNewDBWeapon(JString name, JString image, JString world, unsigned int 
 void CreateNewDBAccount(JString name, JString password, int id);
 void LoadDBAccount(TServerPlayer* player, const JString& name, JString world);
 void SaveDBAccount(TServerPlayer* player);
+
+JString ForceGuildName(const JString& accname);
+
 TServerAccount* GetAccount(const JString& name);
 JString SetAccount(JString data, int rcadminlevel); // returns the changed account name
 int GetAccountCount();
@@ -51,6 +54,12 @@ JString GetAccountsList(const JString& likestr, const JString& wherestr);
 void DeleteAccount(const JString& accname, int adminlevel);
 void DeleteGuild(const JString& guildname);
 void DelGuildMember(const JString& accname, const JString& guildname);
+
+void ControlDBUpdates(TServerPlayer* player);
+bool ControlDBChanged();
+void ControlDBClear();
+
+
 JString ListGuild(const JString& likestr, const JString& wherestr);
 JString ListGuildMembers(const JString& likestr, const JString& wherestr, const JString& guildname);
 void CreateGuild(const JString& accname, const JString& player, const JString& rank,const JString& guildname);

@@ -120,17 +120,17 @@ void SaveWeapons() {
 
 
 bool LevelIsJail(const JString& str) {
-  if (str=="police2.graal" || str=="police4.graal" ||
-    str=="police5.graal") return true;
+  if (str=="police2.zelda" || str=="police4.zelda" ||
+    str=="police5.zelda") return true;
   return false;
 }
 
 void ToWaypointLevel(const JString& accname, JString waypoint_level, double waypoint_x, double waypoint_y) {
+	//accname, level, x, y
 	if (Length(accname)<=0) return;
 
 	TServerPlayer* player2 = ServerFrame->GetPlayerForAccount(accname);
-	if (Assigned(player2) && !player2->isrc && Length(player2->playerworld)>0 && !LevelIsJail(LowerCaseFilename(player2->levelname))) 
-	player2->gotoNewWorld("",startlevel,startx,starty);
+	if (Assigned(player2) && !player2->isrc && Length(player2->playerworld)>0 && !LevelIsJail(LowerCaseFilename(player2->levelname))) player2->gotoNewWorld("",startlevel,startx,starty);
 
 	TServerPlayer* player = new TServerPlayer(NULL,0);
 	LoadDBAccount(player,accname,"");

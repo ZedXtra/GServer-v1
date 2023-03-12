@@ -49,6 +49,9 @@ CREATE TABLE classic (
    chests text NOT NULL,
    flags text NOT NULL,
    apcounter int(11) DEFAULT '0' NOT NULL,
+   guild varchar(50) NOT NULL,
+   guildrank tinyint(4) NOT NULL,
+   guildnick varchar(50) NOT NULL,
    PRIMARY KEY (accname)
 );
 
@@ -59,15 +62,6 @@ CREATE TABLE weapons (
    world tinyint(4) NOT NULL,
    modtime int(10) unsigned NOT NULL,
    PRIMARY KEY (name)
-);
-
-# Guilds
-CREATE TABLE guilds (
-   accname varchar(50) NOT NULL,
-   player varchar(50) NOT NULL,
-   rank tinyint(4) NOT NULL,
-   guildname varchar(50) NOT NULL,
-   PRIMARY KEY (accname)
 );
 
 # Profiles

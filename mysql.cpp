@@ -147,6 +147,256 @@ void LoadDBWeapons(int i) {
 
 }
 
+void ControlDBClear() {
+	dberror = "";
+	MYSQL_RES* res;
+
+	// Delete all rows with the player's account name from the updates table
+	JString query = "DELETE FROM updates";
+	if (mysql_query(mysql, query.text())) {
+		dberror = JString("Deleting failed: ") << mysql_error(mysql);
+		std::cout << dberror << std::endl;
+		mysql_free_result(res);
+		return;
+	}
+}
+
+bool ControlDBChanged() {
+    MYSQL_RES *res;
+    MYSQL_ROW row;
+    JString query = "SELECT * FROM updates";
+    if (mysql_query(mysql, query.text())) {
+        std::cout << "Loading failed: couldn't load a table: " << mysql_error(mysql) << std::endl;
+        return false;
+    }
+    res = mysql_store_result(mysql);
+    if (res == NULL) {
+        std::cout << "Loading failed: couldn't store a result: " << mysql_error(mysql) << std::endl;
+        return false;
+    }
+    bool Updates = (mysql_num_rows(res) > 0);
+    mysql_free_result(res);
+    return Updates;
+}
+
+
+
+
+
+
+
+
+void ControlDBUpdates(TServerPlayer* player) {
+	dberror = "";
+	MYSQL_RES* res;
+	MYSQL_ROW row;
+	MYSQL_RES* res2;
+	MYSQL_ROW row2;
+	int modification;
+	JString attribute, props;
+	
+	
+	JString tempnickname = "NULL";
+	int tempx = -1;
+	int tempy = -1;
+	JString templevel = "NULL";
+	int tempmaxhp = -1;
+	int temphp = -1;
+	int temprupees = -1;
+	int temparrows = -1;
+	int tempbombs = -1;
+	int tempglovepower = -1;
+	int tempswordpower = -1;
+	int tempshieldpower = -1;
+	JString tempheadimg = "NULL";
+	JString tempswordimg = "NULL";
+	JString tempshieldimg = "NULL";
+	
+	
+	//Check if the changes table exists. Move this to where the entire database is recreate... which will be a function made in the future.
+    JString query = "SHOW TABLES LIKE 'updates'";
+    if (mysql_query(mysql, query.text())) {
+		dberror = JString("Error checking if table exists: ") << mysql_error(mysql);
+		std::cout << dberror << std::endl;
+        return;
+    }
+    res = mysql_store_result(mysql);
+    if (mysql_num_rows(res) == 0) { // 'Changes' table does not exist
+		std::cout << "Creating Updates table!" << std::endl;
+        query = "CREATE TABLE updates ("
+                "accname VARCHAR(50) NOT NULL,"
+                "modification tinyint(3) UNSIGNED NOT NULL"
+                ")";
+        if (mysql_query(mysql, query.text())) {
+			dberror = JString("Error creating table: ") << mysql_error(mysql);
+			std::cout << dberror << std::endl;
+            mysql_free_result(res);
+            return;
+        }
+    }
+    mysql_free_result(res);
+	
+	
+    //Check if there are any updates for this user.
+    query = "SELECT * FROM updates WHERE accname = '" + player->accountname + "'";
+    if (mysql_query(mysql, query.text())) {
+        dberror = JString("Error selecting from table: ") << mysql_error(mysql);
+        std::cout << dberror << std::endl;
+        return;
+    }
+    res = mysql_store_result(mysql);
+    if (mysql_num_rows(res) > 0) { //User found!
+        while ((row = mysql_fetch_row(res))) {
+			int modification = std::stoi(row[1]);
+            std::cout << "Modification for " << player->accountname << ": " << modification << std::endl;
+			if (modification == 1) {
+				attribute = "accname";
+			} else if (modification == 2) {
+				attribute = "nickname";
+			} else if (modification == 3) {
+				attribute = "x";
+			} else if (modification == 4) {
+				attribute = "y";
+			} else if (modification == 5) {
+				attribute = "level";
+			} else if (modification == 6) {
+				attribute = "maxhp";
+			} else if (modification == 7) {
+				attribute = "hp";
+			} else if (modification == 8) {
+				attribute = "rupees";
+			} else if (modification == 9) {
+				attribute = "arrows";
+			} else if (modification == 10) {
+				attribute = "bombs";
+			} else if (modification == 11) {
+				attribute = "glovepower";
+			} else if (modification == 12) {
+				attribute = "swordpower";
+			} else if (modification == 13) {
+				attribute = "shieldpower";
+			} else if (modification == 14) {
+				attribute = "headimg";
+			} else if (modification == 15) {
+				attribute = "swordimg";
+			} else if (modification == 16) {
+				attribute = "shieldimg";
+			}
+			std::cout << "Grabbing " << attribute << " for " << player->accountname << std::endl;
+
+			query = "SELECT " + attribute + " FROM classic WHERE accname = '" + player->accountname + "'";
+			if (mysql_query(mysql, query.text())) {
+				dberror = JString("Error selecting from table: ") << mysql_error(mysql);
+				std::cout << dberror << std::endl;
+				return;
+			}
+			res2 = mysql_store_result(mysql);
+			if (mysql_num_rows(res2) > 0) { //Accname found!
+				// Do something with the row
+				row2 = mysql_fetch_row(res2);
+				// Access the fields using the column indexes
+				
+			}
+
+			std::cout << "Attribute: " << attribute << std::endl;
+			
+			if (attribute == "accname") {
+				//We are screwed at this point. The account name shouldn't be changed while it is logged in.
+			} else if (attribute == "nickname") {
+				tempnickname = row2[0];
+			} else if (attribute == "x") {
+				tempx = std::stoi(row2[0]);
+			} else if (attribute == "y") {
+				tempy = std::stoi(row2[0]);
+			} else if (attribute == "level") {
+				templevel = row2[0];
+			} else if (attribute == "maxhp") {
+				tempmaxhp = std::stoi(row2[0]);
+			} else if (attribute == "hp") {
+				temphp = std::stoi(row2[0]);
+			} else if (attribute == "rupees") {
+				temprupees = std::stoi(row2[0]);
+			} else if (attribute == "arrows") {
+				temparrows = std::stoi(row2[0]);
+			} else if (attribute == "bombs") {
+				tempbombs = std::stoi(row2[0]);
+			} else if (attribute == "glovepower") {
+				tempglovepower = std::stoi(row2[0]);
+			} else if (attribute == "swordpower") {
+				tempswordpower = std::stoi(row2[0]);
+			} else if (attribute == "shieldpower") {
+				tempshieldpower = std::stoi(row2[0]);
+			} else if (attribute == "headimg") {
+				tempheadimg = row2[0];
+			} else if (attribute == "swordimg") {
+				tempswordimg = row2[0];
+			} else if (attribute == "shieldimg") {
+				tempshieldimg = row2[0];
+			}
+        }
+		//Delete row!
+
+		query = "DELETE FROM updates WHERE accname = '" + player->accountname + "'";
+		if (mysql_query(mysql, query.text())) {
+			dberror = JString("Error deleting from table: ") << mysql_error(mysql);
+			std::cout << dberror << std::endl;
+			mysql_free_result(res);
+			return;
+		}
+
+		
+		
+		TServerPlayer* playernew = new TServerPlayer(NULL,0);
+		LoadDBAccount(playernew,player->accountname,"");
+		//Changes go here.
+		
+		
+		
+		
+		
+
+		if (tempx != -1) {playernew->x = tempx;} else {playernew->x = player->x;}
+		if (tempy != -1) {playernew->y = tempy;} else {playernew->y = player->y;}
+		if (templevel != "NULL") {playernew->levelname = templevel;} else {playernew->levelname = player->levelname;}
+		if (tempmaxhp != -1) {playernew->maxpower = tempmaxhp;} else {playernew->maxpower = player->maxpower;}
+		if (temphp != -1) {playernew->power = temphp;} else {playernew->power = player->power;}
+		if (temprupees != -1) {playernew->rubins = temprupees;} else {playernew->rubins = player->rubins;}
+		if (temparrows != -1) {playernew->darts = temparrows;} else {playernew->darts = player->darts;}
+		if (tempbombs != -1) {playernew->bombscount = tempbombs;} else {playernew->bombscount = player->bombscount;}
+		if (tempglovepower != -1) {playernew->glovepower = tempglovepower;} else {playernew->glovepower = player->glovepower;}
+		if (tempswordpower != -1) {playernew->swordpower = tempswordpower;} else {playernew->swordpower = player->swordpower;}
+		if (tempshieldpower != -1) {playernew->shieldpower = tempshieldpower;} else {playernew->shieldpower = player->shieldpower;}
+		if (tempheadimg != "NULL") {playernew->headgif = tempheadimg;} else {playernew->headgif = player->headgif;}
+		if (tempswordimg != "NULL") {playernew->swordgif = tempswordimg;} else {playernew->swordgif = player->swordgif;}
+		if (tempshieldimg != "NULL") {playernew->shieldgif = tempshieldimg;} else {playernew->shieldgif = player->shieldgif;}
+		
+		
+		
+		
+		
+		
+		SaveDBAccount(playernew);
+		
+		if (templevel != -1) {
+			player->ApplyAccountChange(playernew,true);
+		} else {
+			player->ApplyAccountChange(playernew,false);
+		}
+		
+		
+		delete(playernew);
+		
+		
+		
+		
+    } else {
+		std::cout << "No modifications for " << player->accountname << "!" << std::endl;
+	}
+    mysql_free_result(res);
+	
+}
+
+
 void CreateNewDBWeapon(JString name, JString image, JString world, unsigned int modtime) {
 	dberror = "";
 	MYSQL_RES* res;
@@ -165,10 +415,7 @@ void CreateNewDBWeapon(JString name, JString image, JString world, unsigned int 
 		}
 	}
 	// Create weapon if it doesn't already exist.
-	std::cout << "[Debug: name]" << name << std::endl;
-	std::cout << "[Debug: image]" << image << std::endl;
-	std::cout << "[Debug: world]" << world << std::endl;
-	std::cout << "[Debug: modtime]" << modtime << std::endl;
+	std::cout << "Creating weapon " << name << " with " << image << " as the icon." << std::endl;
 	//Create txt file for the full string.
 	//std::string WeaponString = ServerFrame->getDir() << "config/testtest.txt.";
 	//std::ofstream WeaponTXT(ServerFrame->getDir() << "config/testtest.txt.");
@@ -194,7 +441,8 @@ void CreateNewDBAccount(JString name, JString password, int id) {
 }
 
 void LoadDBAccount(TServerPlayer* player, const JString& name, JString world) {
-  //This function deals with loading the world data of the connect account.
+  //player = PlayObject, name = Account Name in Database, world = World
+  //This function deals with loading the world data of the connecting account.
   //World data isn't being created if none exists. There seems to be code to do so, but it isn't working.
   dberror = "";
   if (!Assigned(player) || Length(name)<=0) {
@@ -239,7 +487,15 @@ void LoadDBAccount(TServerPlayer* player, const JString& name, JString world) {
   }
 
   if (row) {
-    player->nickname = row[1];
+		if (row[32] != NULL && row[34] != NULL) {
+			player->nickname = row[34];
+			player->nickname = player->nickname + " (";
+			player->nickname = player->nickname + row[32];
+			player->nickname = player->nickname + ")";
+		} else {
+			player->nickname = row[1];
+		}
+	std::cout << player->nickname << " is logging in!" << std::endl;
     player->x = strtofloat(row[2]);
     player->y = strtofloat(row[3]);
     player->levelname = row[4];
@@ -319,22 +575,22 @@ void SaveDBAccount(TServerPlayer* player) {
   query << " arrows=" << player->darts << ", ";
   query << " bombs=" << player->bombscount << ", ";
   query << " glovepower=" << player->glovepower << ", ";
-#ifndef NEWWORLD
+//#ifndef NEWWORLD
   query << " swordpower=" << player->swordpower << ", ";
-#endif
+//#endif
   query << " shieldpower=" << player->shieldpower << ", ";
   query << " headimg='" << escaped39(player->headgif) << "', ";
   //query << " bodyimg='" << escaped39(player->bodyimg) << "', ";
-#ifndef NEWWORLD
+//#ifndef NEWWORLD
   query << " swordimg='" << escaped39(player->swordgif) << "', ";
-#endif
+//#endif
   query << " shieldimg='" << escaped39(player->shieldgif) << "', ";
   JString colorstr;
-#ifdef NEWWORLD
-  for (int i=0; i<8; i++) colorstr << (char)(player->colors[i]+'a');
-#else
+//#ifdef NEWWORLD
+//  for (int i=0; i<8; i++) colorstr << (char)(player->colors[i]+'a');
+//#else
   for (int i=0; i<5; i++) colorstr << (char)(player->colors[i]+'a');
-#endif
+//#endif
   query << " colors='" << escaped39(colorstr) << "', ";
   query << " sprite=" << player->spritenum << ", ";
   query << " status=" << player->status << ", ";
@@ -371,11 +627,11 @@ TServerAccount* GetAccount(const JString& name) {
   if (!sqlok) return NULL;
 
   MYSQL_RES* res;
-#ifdef NEWWORLD
-  JString query = "SELECT * FROM accountsnw WHERE accname='"+escaped39(name)+"'";
-#else
+//#ifdef NEWWORLD
+//  JString query = "SELECT * FROM accountsnw WHERE accname='"+escaped39(name)+"'";
+//#else
   JString query = "SELECT * FROM accounts WHERE accname='"+escaped39(name)+"'";
-#endif
+//#endif
   if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) {
     dberror = JString("Couldn't get account: ") << mysql_error(mysql);
     return NULL;
@@ -399,29 +655,64 @@ TServerAccount* GetAccount(const JString& name) {
   return account;
 }
 
+
+
+
+JString ForceGuildName(const JString& accname) {
+	connecttodb();
+	if (!sqlok) {
+		return false;
+	}
+	MYSQL_RES* res;
+	JString query = "SELECT guildnick, guild FROM classic WHERE accname='"+escaped39(accname)+"'";
+	if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) { 
+		return false;
+	} else {
+		MYSQL_ROW row = mysql_fetch_row(res);
+		if (row[0] != NULL && row[1] != NULL) {
+			JString guildnick = row[0];
+			guildnick = guildnick + " (" + row[1] + ")";
+			std::cout << accname << "'s guild is " << guildnick << std::endl;
+			mysql_free_result(res);
+			return guildnick;
+		} else {
+			mysql_free_result(res);
+			return false;
+		}
+	}
+}
+
+
+
+
+
+
+
 // New Function To Use Mysql instead of .txt file for guilds
 bool IsInGuild(const JString& accname,const JString& name,const JString& guild) {
-  if (Length(name)<=0) {
-    return false;
-  }
-
-  connecttodb();
-  if (!sqlok) return false;
-
-  MYSQL_RES* res;
-  JString query = "SELECT * FROM guilds WHERE guildname='"+escaped39(guild)+"' AND accname='"+escaped39(accname)+"'";
-  
-  if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) { 
-  return false;
-  }
-  else {
-	MYSQL_ROW row = mysql_fetch_row(res);
-	if (row) {
-		if (LowerCase(row[1])!=LowerCase(name)) { return false; }
-		else { mysql_free_result(res); return true; }
+	if (Length(name)<=0) {
+		return false;
 	}
-return false;
-}
+	connecttodb();
+	if (!sqlok) {
+		return false;
+	}
+	std::cout << "Checking if we can set " << accname << "'s name to " << name << " (" << guild << ")" << std::endl;
+	MYSQL_RES* res;
+	JString query = "SELECT guildnick FROM classic WHERE guild='"+escaped39(guild)+"' AND accname='"+escaped39(accname)+"'";
+	if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) { 
+		return false;
+	} else {
+		MYSQL_ROW row = mysql_fetch_row(res);
+		if (row != nullptr && row[0] != nullptr) {
+			std::cout << "Guild Nick: " << row[0];
+		}
+		if (row) {
+			if (LowerCase(row[0])!=LowerCase(name)) { return false; }
+			else { mysql_free_result(res); return true; }
+		}
+		return false;
+	}
 }
 
 JString SetAccount(JString data, int rcadminlevel) {
@@ -751,37 +1042,42 @@ void DeleteAccount(const JString& accname, int adminlevel) {
   }
   delete(list);
 }
-void CreateGuild(const JString& accname, const JString& player, const JString& rank,const JString& guildname) {	
-  dberror = "";
-  connecttodb();
-  if (!sqlok) return;
-  JString query = "INSERT INTO guilds (accname,player,rank,guildname) VALUES";
-  query << " ('" << escaped39(accname) << "', '" << escaped39(player) << "', " << escaped39(rank) << ", '" << escaped39(guildname) << "')";
-  if (mysql_query(mysql,query.text()))
-    dberror = JString("Couldn't add account: ") << mysql_error(mysql);
+
+void CreateGuild(const JString& accname, const JString& player, const JString& rank, const JString& guildname) {	
+	dberror = "";
+	connecttodb();
+	if (!sqlok) return;
+	JString query = "UPDATE classic SET guild='" + escaped39(guildname) + "', guildrank=" + escaped39(rank) + ", guildnick='" + escaped39(player) + "' WHERE accname='" + escaped39(accname) + "'";
+	if (mysql_query(mysql,query.text())) {
+		dberror = JString("Couldn't add account: ") << mysql_error(mysql);
+		std::cout << dberror;
+		return;
+	}
 }
 
 void DeleteGuild(const JString& guildname) {
-  dberror = "";
-  connecttodb();
-  if (!sqlok) return;
-
-  JString queryn = "DELETE FROM guilds WHERE guildname='"+escaped39(guildname)+"'";
-  if (mysql_query(mysql,queryn.text())) {
-    dberror = JString("Couldn't delete guild: ") << mysql_error(mysql) << JString(" Guildname: ") << escaped39(guildname);
-    return;
-  }
+	dberror = "";
+	connecttodb();
+	if (!sqlok) return;
+	JString query = "UPDATE classic SET guild=null, guildrank=null, guildnick=null WHERE guild='" + escaped39(guildname) + "'";
+	if (mysql_query(mysql,query.text())) {
+	dberror = JString("Couldn't delete guild: ") << mysql_error(mysql) << JString(" Guild: ") << escaped39(guildname);
+		std::cout << dberror;
+		return;
+	}
 }
-void DelGuildMember(const JString& accname, const JString& guildname) {
-  dberror = "";
-  connecttodb();
-  if (!sqlok) return;
 
-  JString queryn = "DELETE FROM guilds WHERE guildname='"+escaped39(guildname)+"' and accname='" + accname + "'";
-  if (mysql_query(mysql,queryn.text())) {
-    dberror = JString("Couldn't delete guild: ") << mysql_error(mysql) << JString(" Guildname: ") << escaped39(guildname);
-    return;
-  }
+
+void DelGuildMember(const JString& accname, const JString& guildname) {
+	dberror = "";
+	connecttodb();
+	if (!sqlok) return;
+	JString query = "UPDATE classic SET guild=null, guildrank=null, guildnick=null WHERE accname='" + escaped39(accname) + "' and guild='" + escaped39(guildname) + "'";
+	if (mysql_query(mysql,query.text())) {
+		dberror = JString("Couldn't delete guild: ") << mysql_error(mysql) << JString(" Guildname: ") << escaped39(guildname);
+		std::cout << dberror;
+		return;
+	}
 }
 
 JString ListGuild(const JString& likestr, const JString& wherestr) {
@@ -795,68 +1091,75 @@ JString ListGuild(const JString& likestr, const JString& wherestr) {
   }
 
   MYSQL_RES* res;
-  JString query = "SELECT guildname FROM guilds WHERE rank=5 ORDER BY guildname ASC";
-  if (Length(likestr)>0 || Length(wherestr)>0)
-    query << " WHERE";
-  if (Length(likestr)>0)
-    query << " accname like '" << escaped39(likestr) << "'";
-  if (Length(wherestr)>0) {
-    if (Length(likestr)>0) query << " and";
-    query << " " << wherestr;
-  }
+  JString query = "SELECT guild FROM classic WHERE guildrank=5 ORDER BY guild ASC";
+	if (Length(likestr)>0 || Length(wherestr)>0) {
+		query << " WHERE";
+	}
+	if (Length(likestr)>0) {
+		query << " accname like '" << escaped39(likestr) << "'";
+	}
+	if (Length(wherestr)>0) {
+		if (Length(likestr)>0) {
+			query << " and";
+		}
+		query << " " << wherestr;
+	}
 
-  if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) {
-    dberror = JString("Couldn't get accounts list: ") << mysql_error(mysql);
-    return JString();
-  }
+	if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) {
+		dberror = JString("Couldn't get accounts list: ") << mysql_error(mysql);
+		return JString();
+	}
 
-  JString str,str2;
-  MYSQL_ROW row;
-  while ((row=mysql_fetch_row(res))) {
-    str2 = row[0];
-    str << "\nj" << str2;
-  }
-  mysql_free_result(res);
-  str2 = "Guilds:";
-  str2 << str;
-  return str2;
+	JString str,str2;
+	MYSQL_ROW row;
+	while ((row=mysql_fetch_row(res))) {
+		str2 = row[0];
+		str << "\nj" << str2;
+	}
+	mysql_free_result(res);
+	str2 = "Guilds:";
+	str2 << str;
+	return str2;
 }
+
 JString ListGuildMembers(const JString& likestr, const JString& wherestr, const JString& guildname) {
-  dberror = "";
-  connecttodb();
-  if (!sqlok) return JString();
+	dberror = "";
+	connecttodb();
+	if (!sqlok) return JString();
 
-  if (Pos("encrpass",wherestr)>0) {
-    dberror = JString("Couldn't get accounts list: encrpass not allowed as search parameter");
-    return JString();
-  }
+	if (Pos("encrpass",wherestr)>0) {
+		dberror = JString("Couldn't get accounts list: encrpass not allowed as search parameter");
+		return JString();
+	}
 
-  MYSQL_RES* res;
-  JString query = "SELECT * FROM guilds WHERE guildname='" + guildname + "' ORDER BY rank DESC";
-  if (Length(likestr)>0 || Length(wherestr)>0)
-    query << " WHERE";
-  if (Length(likestr)>0)
-    query << " accname like '" << escaped39(likestr) << "'";
-  if (Length(wherestr)>0) {
-    if (Length(likestr)>0) query << " and";
-    query << " " << wherestr;
-  }
+	MYSQL_RES* res;
+	JString query = "SELECT * FROM classic WHERE guild='" + guildname + "' ORDER BY guildrank DESC";
+	if (Length(likestr)>0 || Length(wherestr)>0)
+		query << " WHERE";
+	if (Length(likestr)>0)
+		query << " accname like '" << escaped39(likestr) << "'";
+	if (Length(wherestr)>0) {
+		if (Length(likestr)>0) {
+			query << " and";
+		}
+		query << " " << wherestr;
+	}
 
-  if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) {
-    dberror = JString("Couldn't get accounts list: ") << mysql_error(mysql);
-    return JString();
-  }
+	if(mysql_query(mysql,query.text()) || !(res=mysql_store_result(mysql))) {
+		dberror = JString("Couldn't get accounts list: ") << mysql_error(mysql);
+		return JString();
+	}
 
-  JString str,str2;
-  MYSQL_ROW row;
-  while ((row=mysql_fetch_row(res))) {
-    str2 = row[0];
-    str << "\nj" << str2;
-  }
-  mysql_free_result(res);
-  str2 = "Guild Members of " + guildname + ":";
-  str2 << str;
-  return str2;
+	JString str,str2;
+	MYSQL_ROW row;
+	while ((row=mysql_fetch_row(res))) {
+		str2 = row[0];
+		str << "\nj" << str2;
+	}
+	mysql_free_result(res);
+	str2 = "Guild Members of " + guildname + ":";
+	str2 << str;
+	return str2;
 }
 
 

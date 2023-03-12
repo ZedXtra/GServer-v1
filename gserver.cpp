@@ -17,11 +17,13 @@
 #include <sys/resource.h>
 #include <arpa/inet.h>
 #include <ctype.h>
-
+#include <cstdlib>
+#include <csignal>
 
 #include "cfg.h"
 #include "gserver.h"
 #include "passwords.h"
+#include "colours.h"
 
 // ADDED: To detect windows or linux OS
 #include "os_detect.h"
@@ -29,6 +31,25 @@
 // Advanced commands
 //#define ALLOW_SHUTDOWN   // Allow any RC admin to shutdown server
 
+void bailout() {
+	set_mouse_mode(false);
+	set_raw_mode(false);
+	//clearscreen();
+}
+void interrupt_handler(int x) {
+	std::exit(0);
+}
+
+void mousedown_handler(int row, int col) {
+	std::cout << "Mouse down. Row: " << row << " Col: " << col << std::endl;
+}
+
+void mouseup_handler(int row, int col) {
+	std::cout << "Mouse up. Row: " << row << " Col: " << col << std::endl;
+}
+
+bool weaponsloaded = 0; //Set to 1 when the weapons have been loaded.
+int servertimer = 0; //Timer varaible used for loading weapons after a certain time and for the gui.
 int cplayer = 0;
 int cplayermodify = 0;
 int caccounts = 0;
@@ -89,15 +110,15 @@ JString curdir;
 unsigned int curtime = 0;
 int respawntime = 10;
 int apincrementtime = 1200;
-#ifdef NEWWORLD
-  JString startlevel = JString("tespand2.nw");
-  double startx = 30.5;
-  double starty = 50;
-#else
+//#ifdef NEWWORLD
+//  JString startlevel = JString("tespand2.nw");
+//  double startx = 30.5;
+//  double starty = 50;
+//#else
 	JString startlevel = JString("onlinestartlocation.zelda");
 	double startx = 17.5;
 	double starty = 24;
-#endif
+//#endif
 
 #ifdef OS_WIN32
   const char fileseparator = '\\';
@@ -393,23 +414,22 @@ void TServerFrame::startServer(const JString& port) {
 	//31 = hash_len
 	//32 = hash_key
 	
-	if (CfgSettings[1].data == NULL) {
-		
+	if (CfgSettings[1].data == NULL) {	
 		std::cout << std::endl << "Add unstickme_level, unstickme_x, and unstickme_y, to /config/settings.txt to set the start level. Defaulting to " +startlevel+"!"		<< std::endl;
 	} else {
 		startlevel = JString(CfgSettings[1].data);
 		startx = atoi(CfgSettings[2].data);
 		starty = atoi(CfgSettings[3].data);
-		std::cout << std::endl << "Unstick Location: " + startlevel << std::endl;
-		std::cout << std::endl << "Waypoint 1: " + JString(CfgSettings[1+(1*3)].data) << std::endl;
-		std::cout << std::endl << "Waypoint 2: " + JString(CfgSettings[1+(2*3)].data) << std::endl;
-		std::cout << std::endl << "Waypoint 3: " + JString(CfgSettings[1+(3*3)].data) << std::endl;
-		std::cout << std::endl << "Waypoint 4: " + JString(CfgSettings[1+(4*3)].data) << std::endl;
-		std::cout << std::endl << "Waypoint 5: " + JString(CfgSettings[1+(5*3)].data) << std::endl;
-		std::cout << std::endl << "Waypoint 6: " + JString(CfgSettings[1+(6*3)].data) << std::endl;
-		std::cout << std::endl << "Waypoint 7: " + JString(CfgSettings[1+(7*3)].data) << std::endl;
-		std::cout << std::endl << "Waypoint 8: " + JString(CfgSettings[1+(8*3)].data) << std::endl;
-		std::cout << std::endl << "Waypoint 9: " + JString(CfgSettings[1+(9*3)].data) << std::endl;
+		std::cout << std::endl << "Unstick Location: " + startlevel;
+		std::cout << std::endl << "Waypoint 1: " + JString(CfgSettings[1+(1*3)].data);
+		std::cout << std::endl << "Waypoint 2: " + JString(CfgSettings[1+(2*3)].data);
+		std::cout << std::endl << "Waypoint 3: " + JString(CfgSettings[1+(3*3)].data);
+		std::cout << std::endl << "Waypoint 4: " + JString(CfgSettings[1+(4*3)].data);
+		std::cout << std::endl << "Waypoint 5: " + JString(CfgSettings[1+(5*3)].data);
+		std::cout << std::endl << "Waypoint 6: " + JString(CfgSettings[1+(6*3)].data);
+		std::cout << std::endl << "Waypoint 7: " + JString(CfgSettings[1+(7*3)].data);
+		std::cout << std::endl << "Waypoint 8: " + JString(CfgSettings[1+(8*3)].data);
+		std::cout << std::endl << "Waypoint 9: " + JString(CfgSettings[1+(9*3)].data);
 	}
 
 
@@ -454,7 +474,7 @@ TServerFrame::~TServerFrame() {
     player = (TServerPlayer*)(*players)[i];  
     if (Assigned(player)) {  
       player->SaveMyAccount();  
-      player->SendData(DISMESSAGE,JString()+"This server has been shutdown! Oh no! Will we be back? Maybe! Check the Discord!");
+      player->SendData(DISMESSAGE,JString()+"This server has been shutdown! Oh no! Try to reconnect in a few minutes.");
       player->SendOutgoing();  
       player->sock->Close();  
     }  
@@ -1640,7 +1660,7 @@ void TServerPlayer::parse(const JString& line) {
         j = data[1]-32;  
         JString name;  
   
-		std::cout << "ADDWEAPON2 - "; 
+		//std::cout << "ADDWEAPON2 - "; 
   
         // Try to add the new weapon  
         if (j==0) {
@@ -1652,11 +1672,11 @@ void TServerPlayer::parse(const JString& line) {
           name = (*itemnames)[i];  
           if (myweapons->indexOf(name)>=0) return;  
           myweapons->Add((*itemnames)[i]);  
-			std::cout << "Type 0 Weapon" << std::endl; 
+			//std::cout << "Type 0 Weapon" << std::endl; 
   
   
         } else {  
-		std::cout << "Type 1 Weapon - "; 
+		//std::cout << "Type 1 Weapon - "; 
           if (Length(data)<4 || !Assigned(level)) return;  
   
           // Type 1: a weapon which called the 'toweapons' script command  
@@ -1669,27 +1689,27 @@ void TServerPlayer::parse(const JString& line) {
               if (Length(npc->startimage)<=0) return;  
   
               name = npc->GetWeaponName();  
-			  std::cout << "if (Length(name)<=0) return return "; 
+			  //std::cout << "if (Length(name)<=0) return return "; 
               if (Length(name)<=0) return;  
               // Check if we already have this weapon;  
               // if yes, then don't add a new one  
 			  //std::cout << "if (myweapons->indexOf(name)>=0) return "; 
               //if (myweapons->indexOf(name)>=0) return;  
-			  std::cout << "myweapons->Add(name) "; 
+			  //std::cout << "myweapons->Add(name) "; 
               myweapons->Add(name);  
   
               // Search for weapons in the weapons list that  
               // we can replace; if there is no weapon with the  
               // name yet then add a new TServerWeapon  
               TServerWeapon* replaceweapon = NULL;  
-			  std::cout << "for (j=0; j<weapons->count; j++) "; 
+			  //std::cout << "for (j=0; j<weapons->count; j++) "; 
               for (j=0; j<weapons->count; j++) {
                 TServerWeapon* weapon = (TServerWeapon*)(*weapons)[j];  
-				std::cout << "if (Assigned(weapon) && weapon->name==name && weapon->world==playerworld) "; 
+				//std::cout << "if (Assigned(weapon) && weapon->name==name && weapon->world==playerworld) "; 
                 if (Assigned(weapon) && weapon->name==name && weapon->world==playerworld) {  
                   // Don't replace the existing weapon if it's newer  
                   // than the current level  
-				   std::cout << "Newer Existing Weapon"; 
+				  // std::cout << "Newer Existing Weapon"; 
                   if (weapon->modtime>=level->modtime) return;  
                   replaceweapon = weapon;  
                   break;  
@@ -1697,7 +1717,7 @@ void TServerPlayer::parse(const JString& line) {
               }  
               // Update the found weapon / add a new weapon to the  
               // weapons list  
-			  std::cout << "if (!Assigned(replaceweapon)) "; 
+			  //std::cout << "if (!Assigned(replaceweapon)) "; 
               if (!Assigned(replaceweapon)) {  
                 replaceweapon = new TServerWeapon();  
                 replaceweapon->name = name;
@@ -1706,7 +1726,7 @@ void TServerPlayer::parse(const JString& line) {
               replaceweapon->image = npc->startimage;  
               replaceweapon->modtime = level->modtime;  
               replaceweapon->dataforplayer.clear();  
-			  std::cout << "if (Length(playerworld)>0) "; 
+			  //std::cout << "if (Length(playerworld)>0) "; 
               if (Length(playerworld)>0)   
                 replaceweapon->dataforplayer << JString((char)(Length(name)+32)) << name  
                   << (char)(0+32) << (char)(Length(npc->startimage)+32) << npc->startimage    
@@ -1825,7 +1845,7 @@ void TServerPlayer::parse(const JString& line) {
       {
         if (Length(data)<=0 || adminlevel<3 || !isrc) return;  
 
-        ServerFrame->tolog("Reason for the follwing account modification:\n"+  
+        ServerFrame->tolog("Reason for the following account modification:\n"+  
           AddLineEnds(data));  
         break;  
       }
@@ -1875,6 +1895,7 @@ void TServerPlayer::parse(const JString& line) {
       }
 
     case DADDACCOUNT: {
+		//Create account.
         if (Length(data)<=0 || !isrc || adminlevel<4) return;
         JString accname = AddAccountFromRC(data,adminlevel);
         if (Length(dberror)>0)
@@ -1886,6 +1907,7 @@ void TServerPlayer::parse(const JString& line) {
         break;
       }
     case DDELACCOUNT: {
+		//Delete account.
         if (Length(data)<=0 || !isrc || adminlevel<4) return;
         DeleteAccount(data,adminlevel);
         if (Length(dberror)>0)
@@ -1899,7 +1921,10 @@ void TServerPlayer::parse(const JString& line) {
       }
 
     case DWANTACCLIST: {
+		//Request account list.
         if (Length(data)<2 || !isrc || adminlevel<3) return;
+
+		ServerFrame->SendRCLog(accountname+" has requested the account list");
 
         len = data[1]-32;
         if (len<0) return;
@@ -1962,7 +1987,7 @@ void TServerPlayer::parse(const JString& line) {
         bool found = false;
         for (i=0; i<ServerFrame->players->count; i++) {
           player = (TServerPlayer*)(*ServerFrame->players)[i];
-          if (Assigned(player) && !player->isrc && player->accountname==props && player->playerworld==props2) {
+          if (Assigned(player) && !player->isrc && player->accountname==props && player->playerworld==props2) {			  
             if (adminlevel==5 ||
                 (adminlevel>=3 && player->adminlevel<adminlevel) || player->accountname==accountname) {
               SendRCPlayerProps(player,false);
@@ -2009,7 +2034,7 @@ void TServerPlayer::parse(const JString& line) {
             if (adminlevel==5 || (isadminin(player->playerworld) &&
                 ((adminlevel>=3 && player->adminlevel<adminlevel) || player->accountname==accountname))) {
               SetRCPlayerProps(data,player,false);
-              ServerFrame->SendRCLog(accountname+" set attributes of player "+player->accountname);
+              ServerFrame->SendRCLog(accountname+" set attributes of player "+player->accountname+" (DSETPLPROPS)");
             } else
               SendData(DRCLOG,"Player "+player->accountname+": permission denied");
             break;
@@ -2049,7 +2074,7 @@ void TServerPlayer::parse(const JString& line) {
             if (adminlevel==5 ||
                 (adminlevel>=3 && player->adminlevel<adminlevel) || player->accountname==accountname) {
               SetRCPlayerProps(data,player,false);
-              ServerFrame->SendRCLog(accountname+" set attributes of player "+player->accountname);
+              ServerFrame->SendRCLog(accountname+" set attributes of player "+player->accountname+" (DSETACCPLPROPS)");
             } else
               SendData(DRCLOG,"Player "+props+": permission denied (adminlevel higher than allowed)");
             found = true;
@@ -2115,7 +2140,7 @@ void TServerPlayer::parse(const JString& line) {
       }
     case DRCCHAT: {
         if (Length(data)<=0 || !isrc || adminlevel<1) return;
-// ADDED: Massive new functions! oh yeah ;)
+		// ADDED: Massive new functions! oh yeah ;)
         //
         // Normal Commands:
         // /me <text>            - Do a action
@@ -2137,7 +2162,27 @@ void TServerPlayer::parse(const JString& line) {
         // server->shutdown      - Shutdown server (ALL)
         // server->msg <msg>     - Message to server       
 
-	//MySQL Guild Managment, Coded By Gregovich <BEGIN>
+	//MariaDB Guild Managment, Coded By Gregovich <BEGIN>
+	if (CheckPartofString(LowerCase(data), "control->onlineusers")) {
+		ServerFrame->SendRCLog("Online users: "+ServerFrame->players->count);
+		int index = 0;
+		while (index != ServerFrame->players->count) {
+			player = (TServerPlayer*)(*ServerFrame->players)[index];
+			ServerFrame->SendRCLog(player->accountname);
+			index++;
+		}
+	}
+	if (CheckPartofString(LowerCase(data), "reload->level")) {
+		int index = 0;
+		while (index != ServerFrame->players->count) {
+			TServerPlayer* playercurrent = (TServerPlayer*)(*ServerFrame->players)[index];
+			ServerFrame->SendRCLog(playercurrent->accountname);
+			ControlDBUpdates(playercurrent);			
+			index++;
+		}
+	}
+	
+	
     if (CheckPartofString(LowerCase(data), "guild->del ")) {
 		data = Copy(data, 12, Length(data)-11);
 		ServerFrame->SendPrivRCLog(this, "Deleting guild:");
@@ -2504,6 +2549,9 @@ void TServerPlayer::SendRCPlayerProps(TServerPlayer* player, bool sendaccount) {
 void TServerPlayer::SetRCPlayerProps(JString data, TServerPlayer* player, bool setaccount) {
   if (!Assigned(player)) return;
 
+
+
+
   JString str;
   str << accountname << " changes ";
   if (!setaccount) str << "(the active) ";
@@ -2601,32 +2649,32 @@ void TServerPlayer::SendAccount(const JString& line) {
     clienttype = CLIENTPLAYER; 
   version = Copy(line,2,8); 
   ver = 0; 
-#ifdef NEWWORLD 
+//#ifdef NEWWORLD 
   if (version=="G2NRC004") ver = 19;
   if (version=="G2N29070") ver = 27;
-#else
+//#else
   if (version=="GSERV019") ver = 19;
   else if (version=="GNW02070") ver = 27;
   else if (version=="GNW07080") ver = 28;
   else if (version=="GNW12080") ver = 29;
-#endif
+//#endif
 
-  if ((clienttype==CLIENTPLAYER && ver<27) || (clienttype==CLIENTRC && ver<18)) {
-#ifdef NEWWORLD
-    if (clienttype==CLIENTPLAYER) {
-      SendData(DISMESSAGE,JString()+"You need Newworld version 1.39 to play on this server.");
-    } else {
-      SendData(DISMESSAGE,JString()+"You need RC 2000/8/19 to connect to this server.");
-    }
-#else
-    if (clienttype==CLIENTPLAYER) {
-      SendData(DISMESSAGE,JString()+"You need version 1.39 to play on this server!");
-    } else {
-      SendData(DISMESSAGE,JString()+"You need RC 2000/7/7 to connect to this server.");
-    }
-#endif
-    deleteme = true;    return;
-  }
+//  if ((clienttype==CLIENTPLAYER && ver<27) || (clienttype==CLIENTRC && ver<18)) {
+//#ifdef NEWWORLD
+//    if (clienttype==CLIENTPLAYER) {
+//      SendData(DISMESSAGE,JString()+"You need Newworld version 1.39 to play on this server.");
+//    } else {
+//      SendData(DISMESSAGE,JString()+"You need RC 2000/8/19 to connect to this server.");
+//    }
+//#else
+//    if (clienttype==CLIENTPLAYER) {
+//      SendData(DISMESSAGE,JString()+"You need version 1.39 to play on this server!");
+//    } else {
+//      SendData(DISMESSAGE,JString()+"You need RC 2000/7/7 to connect to this server.");
+//    }
+//#endif
+//    deleteme = true;    return;
+//  }
 
   data = Copy(line,10,Length(line)-9);  
   if (Length(data)<1) { loginerror(line); return; }  
@@ -2700,10 +2748,7 @@ void TServerPlayer::SendAccount(const JString& line) {
   if (!Assigned(account)) {
 
 	if ((name != "Guest") && (name != "guest")) {
-		
-		
-		
-		
+
 		std::cout << std::endl << "Registering a new account!" << std::endl;
 		CreateNewDBAccount(name,password,sock->ip); //Create new account!	
 
@@ -2752,7 +2797,7 @@ void TServerPlayer::SendAccount(const JString& line) {
 		return;
 	}
   if (account->blocked) {
-    SendData(DISMESSAGE,JString()+"The account has been disabled by an admin.");
+    SendData(DISMESSAGE,JString()+"This account has been disabled by an admin.");
     delete(account);
     deleteme = true;
     return;
@@ -2778,11 +2823,14 @@ void TServerPlayer::SendAccount(const JString& line) {
         }
 
         if (playeronaccount) {
-          SendData(DISMESSAGE,JString()+"The account is already in use.");
+          SendData(DISMESSAGE,JString()+"This account is already in use.");
           deleteme = true;
         } else {
 		  //Load weapons from database.
-		  LoadWeapons();
+		if (weaponsloaded == 0) {
+			LoadWeapons();
+			weaponsloaded = 1;
+		}
 
 
           // copy the account props to this player entity
@@ -2805,7 +2853,12 @@ void TServerPlayer::SendAccount(const JString& line) {
           for (i = 0; i<playerpropertycount; i++)
             if (sendinit[i] && !(account->onlyload && ((i==HEADGIF) || (i==PLAYERCOLORS))))
               props << (char)(i+32) << GetProperty(i);
+		  
+		  
+		  //This sets the name.
           SendData(SPLAYERPROPS,props);
+		  
+		  std::cout << props << " is the data stream!" << std::endl;
 
           // send the script flags and npc weapons to the player
           for (i = 0; i<actionflags->count; i++)
@@ -2825,6 +2878,8 @@ void TServerPlayer::SendAccount(const JString& line) {
           props2 << (char)(Length(accountname)+32) << accountname;
           props2 << (char)(CURLEVEL+32) << GetProperty(CURLEVEL);
           props2 << (char)(NICKNAME+32) << GetProperty(NICKNAME);
+		    
+		  
           props2 << (char)(HEADGIF+32) << GetProperty(HEADGIF);
           for (i = 0; i<ServerFrame->players->count; i++) {
             player = (TServerPlayer*)(*ServerFrame->players)[i];
@@ -2850,12 +2905,12 @@ void TServerPlayer::SendAccount(const JString& line) {
           props = GetProperty(PLAYERX) + GetProperty(PLAYERY) + levelname;
           SendData(PLAYERWARPED,props);
           enterLevel(levelname,x,y,JString());
-#ifdef NEWWORLD
-          i = ServerFrame->nwtime;
-          props = JString() + (char)(((i >> 21) & 0x7f)+32) + (char)(((i >> 14) & 0x7f)+32) +
-            (char)(((i >> 7) & 0x7f)+32) + (char)((i & 0x7f)+32);
-          SendData(NEWWORLDTIME,props);
-#endif
+//#ifdef NEWWORLD
+//          i = ServerFrame->nwtime;
+//          props = JString() + (char)(((i >> 21) & 0x7f)+32) + (char)(((i >> 14) & 0x7f)+32) +
+//            (char)(((i >> 7) & 0x7f)+32) + (char)((i & 0x7f)+32);
+//          SendData(NEWWORLDTIME,props);
+//#endif
           SendOutgoing();
 
           // send the start message to the player
@@ -3407,23 +3462,40 @@ void TServerPlayer::SetProperties(JString str) {
             i = Pos(')',guild);  
             if (i>0) guild = Trim(Copy(guild,1,i-1)); else guild = "";  
           }
-          if (nickname==accountname)  
-            nickname = "*" + nickname;  
-          else while (Pos('*',nickname)==1)  
-            nickname = Copy(nickname,2,Length(nickname)-1);  
+		//Not sure of what the point of the following is. Zed 12th of March, 2023.
+        //  if (nickname==accountname)  
+        //    nickname = "*" + nickname;  
+        //  else while (Pos('*',nickname)==1)  
+        //    nickname = Copy(nickname,2,Length(nickname)-1);  
           if (Length(nickname)<=0) nickname = "Spacer";  
           plainnick = nickname;  
   
           if (VerifyGuildName(guild,nickname,accountname)) {  
             plainguild = guild;
-            nickname << " (" << guild << ")";  
+            nickname << " (" << guild << ")";
           } else {  
             plainguild = "";  
           }  
+		  
           if (isrc && adminworlds=="all" && nickname==JString('*')+accountname) {  
             nickname << " (RC)";  
             plainguild = "RC";  
           }  
+		  
+		  
+		  
+		  
+		  
+		  
+		  
+		  //If player belongs to a guild force it to their name.
+		JString forcename = ForceGuildName(accountname);
+		if (forcename.length() > 1) {
+			std::cout << "The assigned guild is: " << forcename << std::endl;
+			nickname = forcename;
+		} else {
+			std::cout << "No guild assigned!" << std::endl;
+		}
   
           if (loggedin()) {
             if (nickname!=props)
@@ -3483,8 +3555,8 @@ void TServerPlayer::SetProperties(JString str) {
         }
       case ARROWSCOUNT: {
           darts = str[2]-32;
-          if (darts>99) {
-            darts = 99;
+          if (darts>999) {
+            darts = 999;
             if (loggedin())
               SendData(SPLAYERPROPS,JString()+(char)(ARROWSCOUNT+32)+GetProperty(ARROWSCOUNT));
           }
@@ -3492,8 +3564,8 @@ void TServerPlayer::SetProperties(JString str) {
         }
       case BOMBSCOUNT: {
           bombscount = str[2]-32;
-          if (bombscount>99) {
-            bombscount = 99;
+          if (bombscount>999) {
+            bombscount = 999;
             if (loggedin())  
               SendData(SPLAYERPROPS,JString()+(char)(BOMBSCOUNT+32)+GetProperty(BOMBSCOUNT));  
           }
@@ -4088,6 +4160,9 @@ else if (curchat=="showdeaths") {
 		}
 		ToWaypointLevel(accountname, JString(CfgSettings[1+(l*3)].data), atoi(CfgSettings[2+(l*3)].data), atoi(CfgSettings[3+(l*3)].data));
 
+
+
+
   } else if (Pos("warpto",curchat)==1 && adminlevel>=1 && isadminin(playerworld)) {  
     JString props = Trim(Copy(curchat,7,Length(curchat)-6));  
     int i = Pos(' ',props);  
@@ -4547,6 +4622,7 @@ char *my_getcwd()
   
 int main(int argc, char *argv[])
 {
+  
   int i;  
   
   // Installing the signal handler  
@@ -4609,7 +4685,6 @@ int main(int argc, char *argv[])
   ServerFrame->startServer(serverport);
   if (ServerFrame->sock == 0) return 0;  
   
- 
   // Endless loop: accept new socket connections, read from/send to sockets  
   // and call Timer1Timer every second  
   unsigned int lasttime;
@@ -4634,6 +4709,51 @@ int main(int argc, char *argv[])
       } 
     }
 
+	//Endless Looper Love!
+	//This part loops forever.
+	
+	
+
+	
+	
+	servertimer = servertimer + 1;
+	
+
+	set_raw_mode(true); //Enable non-blocking IO & quick_read
+	if (quick_read() == ' ') { //Show the menu is space is pressed.
+		std::cout << CYAN << "\nZed Server 1.39.23 Management Console\n\n" << WHITE << "Main Menu\n" << std::endl; 
+		std::cout << GREEN << "   1." << WHITE << " Connected Users" << std::endl; 
+		std::cout << GREEN << "   2." << WHITE << " Connected Users" << std::endl; 
+		std::cout << GREEN << "   3." << WHITE << " Connected Users" << std::endl; 
+		std::cout << GREEN << "   0." << WHITE << " Close Server\n" << std::endl; 
+		std::cout << RED << "   Select Menu Number [0-3]" << std::endl; 
+		//See how large the terminal is in both dimensions
+		const auto [ROWS,COLS] = get_terminal_size();
+		for (int i = 0; i < ROWS - 10; i++) {
+			std::cout << std::endl; 
+		}
+	}
+	set_raw_mode(false);
+	signal(SIGINT,interrupt_handler);
+
+	if (servertimer == 1500) {
+		if (ServerFrame->players->count > 0) {
+			if (ControlDBChanged()) {
+				int index = 0;
+				while (index != ServerFrame->players->count) {
+					TServerPlayer* playercurrent = (TServerPlayer*)(*ServerFrame->players)[index];
+					ServerFrame->SendRCLog(playercurrent->accountname);
+					ControlDBUpdates(playercurrent);			
+					index++;
+				}
+				if (ControlDBChanged()) {
+					ControlDBClear();
+				}
+				
+			}
+		}
+		servertimer = 1;
+	}
   
 #ifdef SERVERSIDENPCS  
     // If data is available, read it  
