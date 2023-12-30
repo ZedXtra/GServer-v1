@@ -83,6 +83,9 @@ CREATE TABLE profiles (
 # Worlds
 CREATE TABLE worlds (
    worldname varchar(50) NOT NULL,
+   players int(11) NOT NULL,
+   uptime varchar(50) NOT NULL,
+   online tinyint(4) unsigned NOT NULL,
    PRIMARY KEY (worldname)
 );
 

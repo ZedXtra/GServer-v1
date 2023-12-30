@@ -49,6 +49,9 @@ void mouseup_handler(int row, int col) {
 }
 
 bool weaponsloaded = 0; //Set to 1 when the weapons have been loaded.
+		
+JString uptime;
+int totalaccounts = 0;
 int servertimer = 0; //Timer varaible used for loading weapons after a certain time and for the gui.
 int cplayer = 0;
 int cplayermodify = 0;
@@ -342,13 +345,33 @@ unsigned int GetUTCFileModTime(JString filename) {
   
   
 //--- TServerFrame ---  
+
+//https://github.com/jimloco/Csocket/blob/master/Csocket.h  
+
   
 void TServerFrame::startServer(const JString& port) {  
+
+
+
 	levels = new TList();  
 	players = new TList();  
 	  
 	unsigned short portnum = (unsigned short)strtoint(port);  
 	sock = new TSocket();  
+	
+	
+	
+	
+	
+	//Advertise to Master Server
+	if (sock->init("listserver.graal.in", "14900") != 0) {
+		//serverLog.out("[%s] :: [Error] Could not initialize %s socket.\n", _server->getName().text(), mastersock.getDescription());
+		return false;
+	}
+	
+	
+	
+	//Start Server
 	sock->Bind(portnum,false,false);  
 	if (sock->error==TSOCKET_ERRCREATE) {
 		std::cout << "socket exception: cannot create socket" << std::endl;  
@@ -4735,6 +4758,15 @@ int main(int argc, char *argv[])
 	}
 	set_raw_mode(false);
 	signal(SIGINT,interrupt_handler);
+
+	if (servertimer == 100) {
+		totalaccounts = GetDBAccounts();
+		//std::cout << GREEN << "Total accounts: " << WHITE << totalaccounts << std::endl; 
+		uptime = inttostr((time(NULL)-starttime_global) / 3600) + " hrs " + inttostr(((time(NULL)-starttime_global) / 60) % 60) + " mins";
+		//std::cout << GREEN << "Up Time: " << WHITE << uptime << std::endl; 
+		//std::cout << GREEN << "Online Players: " << WHITE << ServerFrame->players->count << std::endl; 
+		UpdateDBGlobals(totalaccounts, uptime, ServerFrame->players->count);
+	}
 
 	if (servertimer == 1500) {
 		if (ServerFrame->players->count > 0) {

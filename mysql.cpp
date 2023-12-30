@@ -162,7 +162,7 @@ void ControlDBClear() {
 }
 
 bool ControlDBChanged() {
-    MYSQL_RES *res;
+    MYSQL_RES* res;
     MYSQL_ROW row;
     JString query = "SELECT * FROM updates";
     if (mysql_query(mysql, query.text())) {
@@ -180,6 +180,43 @@ bool ControlDBChanged() {
 }
 
 
+int GetDBAccounts() {
+	dberror = "";
+	connecttodb();
+    MYSQL_RES* res;
+    int rows = 0;
+    JString query = "SELECT COUNT(*) FROM classic";
+    if (mysql_query(mysql, query.text())) {
+        dberror = JString("Error selecting from table: ") << mysql_error(mysql);
+        std::cout << dberror << std::endl;
+        return rows;
+    }
+    res = mysql_store_result(mysql);
+    if (res) {
+        MYSQL_ROW row = mysql_fetch_row(res);
+        if (row) {
+            rows = std::stoi(row[0]);
+        }
+        mysql_free_result(res);
+    } else {
+        dberror = JString("Error storing result set: ") << mysql_error(mysql);
+        std::cout << dberror << std::endl;
+    }
+    return rows;
+}
+
+void UpdateDBGlobals(int a, JString t, int p) { //total accounts, uptime, online players
+	dberror = "";
+	connecttodb();
+	if (!sqlok) return;
+	JString query = "UPDATE worlds SET players=" + inttostr(a) + ", uptime='" + t + "', online=" + inttostr(p) + " WHERE worldname='classic'";
+	if (mysql_query(mysql,query.text())) {
+		dberror = JString("Couldn't update world table: ") << mysql_error(mysql);
+		std::cout << dberror;
+		return;
+	}
+}
+
 
 
 
@@ -194,8 +231,6 @@ void ControlDBUpdates(TServerPlayer* player) {
 	MYSQL_ROW row2;
 	int modification;
 	JString attribute, props;
-	
-	
 	JString tempnickname = "NULL";
 	int tempx = -1;
 	int tempy = -1;
@@ -211,8 +246,6 @@ void ControlDBUpdates(TServerPlayer* player) {
 	JString tempheadimg = "NULL";
 	JString tempswordimg = "NULL";
 	JString tempshieldimg = "NULL";
-	
-	
 	//Check if the changes table exists. Move this to where the entire database is recreate... which will be a function made in the future.
     JString query = "SHOW TABLES LIKE 'updates'";
     if (mysql_query(mysql, query.text())) {
@@ -235,8 +268,6 @@ void ControlDBUpdates(TServerPlayer* player) {
         }
     }
     mysql_free_result(res);
-	
-	
     //Check if there are any updates for this user.
     query = "SELECT * FROM updates WHERE accname = '" + player->accountname + "'";
     if (mysql_query(mysql, query.text())) {
@@ -283,7 +314,6 @@ void ControlDBUpdates(TServerPlayer* player) {
 				attribute = "shieldimg";
 			}
 			std::cout << "Grabbing " << attribute << " for " << player->accountname << std::endl;
-
 			query = "SELECT " + attribute + " FROM classic WHERE accname = '" + player->accountname + "'";
 			if (mysql_query(mysql, query.text())) {
 				dberror = JString("Error selecting from table: ") << mysql_error(mysql);
@@ -295,11 +325,8 @@ void ControlDBUpdates(TServerPlayer* player) {
 				// Do something with the row
 				row2 = mysql_fetch_row(res2);
 				// Access the fields using the column indexes
-				
 			}
-
 			std::cout << "Attribute: " << attribute << std::endl;
-			
 			if (attribute == "accname") {
 				//We are screwed at this point. The account name shouldn't be changed while it is logged in.
 			} else if (attribute == "nickname") {
@@ -335,7 +362,6 @@ void ControlDBUpdates(TServerPlayer* player) {
 			}
         }
 		//Delete row!
-
 		query = "DELETE FROM updates WHERE accname = '" + player->accountname + "'";
 		if (mysql_query(mysql, query.text())) {
 			dberror = JString("Error deleting from table: ") << mysql_error(mysql);
@@ -343,18 +369,9 @@ void ControlDBUpdates(TServerPlayer* player) {
 			mysql_free_result(res);
 			return;
 		}
-
-		
-		
 		TServerPlayer* playernew = new TServerPlayer(NULL,0);
 		LoadDBAccount(playernew,player->accountname,"");
 		//Changes go here.
-		
-		
-		
-		
-		
-
 		if (tempx != -1) {playernew->x = tempx;} else {playernew->x = player->x;}
 		if (tempy != -1) {playernew->y = tempy;} else {playernew->y = player->y;}
 		if (templevel != "NULL") {playernew->levelname = templevel;} else {playernew->levelname = player->levelname;}
@@ -369,31 +386,17 @@ void ControlDBUpdates(TServerPlayer* player) {
 		if (tempheadimg != "NULL") {playernew->headgif = tempheadimg;} else {playernew->headgif = player->headgif;}
 		if (tempswordimg != "NULL") {playernew->swordgif = tempswordimg;} else {playernew->swordgif = player->swordgif;}
 		if (tempshieldimg != "NULL") {playernew->shieldgif = tempshieldimg;} else {playernew->shieldgif = player->shieldgif;}
-		
-		
-		
-		
-		
-		
 		SaveDBAccount(playernew);
-		
 		if (templevel != -1) {
 			player->ApplyAccountChange(playernew,true);
 		} else {
 			player->ApplyAccountChange(playernew,false);
 		}
-		
-		
 		delete(playernew);
-		
-		
-		
-		
     } else {
 		std::cout << "No modifications for " << player->accountname << "!" << std::endl;
 	}
     mysql_free_result(res);
-	
 }
 
 

@@ -38,11 +38,13 @@ class TServerWeapon {
 
 
 int CountDBTable(JString table);
+int GetDBAccounts();
 void LoadDBWeapons(int i);
 void CreateNewDBWeapon(JString name, JString image, JString world, unsigned int modtime);
 void CreateNewDBAccount(JString name, JString password, int id);
 void LoadDBAccount(TServerPlayer* player, const JString& name, JString world);
 void SaveDBAccount(TServerPlayer* player);
+void UpdateDBGlobals(int a, JString t, int p); //total accounts, uptime, online players
 
 JString ForceGuildName(const JString& accname);
 
